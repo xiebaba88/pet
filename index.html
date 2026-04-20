@@ -622,11 +622,11 @@ export default function PeiPeiDogApp() {
             <CardContent className="grid gap-3 text-sm">
               <div>
                 <div className="text-sm mb-2">Supabase URL</div>
-                <Input value={config.supabaseUrl} onChange={(e) => saveConfig({ ...config, supabaseUrl: e.target.value })} placeholder="https://zdjdjzbszgrijikamoy.supabase.co" className="rounded-2xl" />
+                <Input value={config.supabaseUrl} onChange={(e) => saveConfig({ ...config, supabaseUrl: e.target.value })} placeholder="https://xxxx.supabase.co" className="rounded-2xl" />
               </div>
               <div>
                 <div className="text-sm mb-2">Publishable / anon key</div>
-                <Input value={config.supabaseKey} onChange={(e) => saveConfig({ ...config, supabaseKey: e.target.value })} placeholder="sb_publishable_FzxPcGMJFZoDO96GtpzVzw_Cc67a9Ok" className="rounded-2xl" />
+                <Input value={config.supabaseKey} onChange={(e) => saveConfig({ ...config, supabaseKey: e.target.value })} placeholder="eyJ..." className="rounded-2xl" />
               </div>
               <div>
                 <div className="text-sm mb-2">房間代碼</div>
@@ -672,4 +672,3 @@ export default function PeiPeiDogApp() {
     </div>
   );
 }
-                  
