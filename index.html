@@ -251,72 +251,85 @@
               <div class="star s2" id="star2" style="display:none">⭐</div>
               <div class="star s3" id="star3" style="display:none">✨</div>
               <div class="dog-box">
-                <svg id="dogSvg" viewBox="0 0 360 360" width="270" height="270" aria-label="dog">
+                <svg id="dogSvg" viewBox="0 0 420 360" width="270" height="270" aria-label="dog">
                   <defs>
-                    <radialGradient id="furMain" cx="50%" cy="35%" r="70%">
-                      <stop offset="0%" stop-color="#ffe4bf"/>
-                      <stop offset="70%" stop-color="#f3c98f"/>
-                      <stop offset="100%" stop-color="#ddb07a"/>
+                    <radialGradient id="furMain" cx="50%" cy="30%" r="75%">
+                      <stop offset="0%" stop-color="#ffe6bd"/>
+                      <stop offset="68%" stop-color="#f4c98d"/>
+                      <stop offset="100%" stop-color="#d9a56e"/>
                     </radialGradient>
-                    <radialGradient id="furCream" cx="50%" cy="35%" r="70%">
-                      <stop offset="0%" stop-color="#fffdf8"/>
-                      <stop offset="100%" stop-color="#fff2df"/>
+                    <radialGradient id="furLight" cx="50%" cy="32%" r="70%">
+                      <stop offset="0%" stop-color="#fffdf9"/>
+                      <stop offset="100%" stop-color="#fff0dd"/>
                     </radialGradient>
                     <linearGradient id="earGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#c98f5f"/>
-                      <stop offset="100%" stop-color="#a56a46"/>
+                      <stop offset="0%" stop-color="#c88d5c"/>
+                      <stop offset="100%" stop-color="#9f673f"/>
                     </linearGradient>
-                    <radialGradient id="innerEar" cx="50%" cy="40%" r="70%">
-                      <stop offset="0%" stop-color="#ffd8c7"/>
-                      <stop offset="100%" stop-color="#efb8a5"/>
+                    <radialGradient id="innerEar" cx="50%" cy="45%" r="70%">
+                      <stop offset="0%" stop-color="#ffd6c8"/>
+                      <stop offset="100%" stop-color="#efb59e"/>
                     </radialGradient>
                     <radialGradient id="noseGrad" cx="50%" cy="35%" r="80%">
-                      <stop offset="0%" stop-color="#6b4b3f"/>
-                      <stop offset="100%" stop-color="#3e2a24"/>
+                      <stop offset="0%" stop-color="#6f5042"/>
+                      <stop offset="100%" stop-color="#3d2822"/>
                     </radialGradient>
                     <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
                       <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="rgba(0,0,0,0.16)"/>
                     </filter>
                   </defs>
 
-                  <ellipse cx="180" cy="312" rx="86" ry="20" fill="rgba(0,0,0,0.08)" />
+                  <ellipse cx="206" cy="322" rx="94" ry="18" fill="rgba(0,0,0,0.08)" />
 
-                  <g filter="url(#softShadow)">
-                    <path d="M104 108 C86 72, 90 28, 132 36 C156 40, 163 80, 156 120 C151 151, 121 149, 104 108 Z" fill="url(#earGrad)" />
-                    <path d="M126 92 C117 69, 122 50, 140 55 C151 58, 151 84, 145 106 C141 122, 131 117, 126 92 Z" fill="url(#innerEar)" opacity="0.9" />
-
-                    <path d="M256 108 C274 72, 270 28, 228 36 C204 40, 197 80, 204 120 C209 151, 239 149, 256 108 Z" fill="url(#earGrad)" />
-                    <path d="M234 92 C243 69, 238 50, 220 55 C209 58, 209 84, 215 106 C219 122, 229 117, 234 92 Z" fill="url(#innerEar)" opacity="0.9" />
-
-                    <ellipse cx="180" cy="164" rx="100" ry="92" fill="url(#furMain)" />
-                    <ellipse cx="180" cy="178" rx="68" ry="56" fill="url(#furCream)" />
-                    <ellipse cx="180" cy="150" rx="24" ry="18" fill="url(#noseGrad)" />
-
-                    <ellipse cx="142" cy="122" rx="11" ry="12" fill="#2f211d" />
-                    <ellipse cx="218" cy="122" rx="11" ry="12" fill="#2f211d" />
-                    <ellipse cx="139" cy="118" rx="3.2" ry="3.6" fill="#ffffff" opacity="0.9" />
-                    <ellipse cx="215" cy="118" rx="3.2" ry="3.6" fill="#ffffff" opacity="0.9" />
-                    <path d="M166 172 Q180 184 194 172" stroke="#8d6152" stroke-width="5" stroke-linecap="round" fill="none" />
-                    <path d="M180 161 L180 172" stroke="#8d6152" stroke-width="4" stroke-linecap="round" />
-
-                    <ellipse id="blushL" cx="132" cy="156" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
-                    <ellipse id="blushR" cx="228" cy="156" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
-
-                    <ellipse cx="180" cy="242" rx="78" ry="60" fill="url(#furMain)" />
-                    <ellipse cx="180" cy="252" rx="50" ry="34" fill="url(#furCream)" />
-                    <ellipse cx="144" cy="256" rx="30" ry="20" fill="url(#furCream)" />
-                    <ellipse cx="216" cy="256" rx="30" ry="20" fill="url(#furCream)" />
-                    <circle cx="140" cy="257" r="5.5" fill="#c9876b" />
-                    <circle cx="220" cy="257" r="5.5" fill="#c9876b" />
-                    <circle cx="164" cy="279" r="5.5" fill="#c9876b" />
-                    <circle cx="196" cy="279" r="5.5" fill="#c9876b" />
+                  <g id="tailGroup" style="transform-origin: 305px 252px;">
+                    <path id="tailShape" d="M304 254 C338 238, 350 266, 322 284 C300 298, 286 281, 294 266 C297 260, 300 257, 304 254 Z" fill="url(#furMain)" />
+                    <path d="M312 257 C330 248, 336 263, 322 274" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="5" stroke-linecap="round"/>
                   </g>
 
-                  <g id="accBlueScarf" style="display:none"><path d="M126 212 Q180 230 234 212 L220 238 Q180 252 140 238 Z" fill="#7dc8ff" /><circle cx="216" cy="236" r="6" fill="#5eb5f4"/></g>
-                  <g id="accPinkBow" style="display:none"><ellipse cx="154" cy="76" rx="20" ry="13" fill="#ff9fca" /><ellipse cx="182" cy="76" rx="20" ry="13" fill="#ff9fca" /><circle cx="168" cy="76" r="7" fill="#ff79b6" /></g>
-                  <g id="accStarHat" style="display:none"><path d="M146 52 H214 L198 84 H162 Z" fill="#5c6cff" /><circle cx="180" cy="48" r="11" fill="#ffd75e" /></g>
-                  <g id="accCape" style="display:none"><path d="M120 212 Q180 270 240 212 L252 252 Q180 302 108 252 Z" fill="#ff7d8f" opacity="0.9" /></g>
-                  <g id="accStrawberry" style="display:none"><path d="M148 58 Q180 26 212 58 Q202 88 180 94 Q158 88 148 58 Z" fill="#ff5e74" /><path d="M168 44 Q180 31 192 44" stroke="#61a84a" stroke-width="6" stroke-linecap="round" fill="none" /><circle cx="166" cy="68" r="2.2" fill="#fff4c2" /><circle cx="184" cy="74" r="2.2" fill="#fff4c2" /><circle cx="195" cy="63" r="2.2" fill="#fff4c2" /></g>
+                  <g id="dogBodyGroup" filter="url(#softShadow)">
+                    <path d="M136 112 C116 72, 122 28, 164 35 C190 39, 197 84, 189 126 C183 155, 151 153, 136 112 Z" fill="url(#earGrad)" />
+                    <path d="M156 94 C148 68, 153 48, 171 54 C183 58, 183 84, 177 108 C173 124, 161 119, 156 94 Z" fill="url(#innerEar)" opacity="0.92" />
+
+                    <path d="M274 112 C294 72, 288 28, 246 35 C220 39, 213 84, 221 126 C227 155, 259 153, 274 112 Z" fill="url(#earGrad)" />
+                    <path d="M254 94 C262 68, 257 48, 239 54 C227 58, 227 84, 233 108 C237 124, 249 119, 254 94 Z" fill="url(#innerEar)" opacity="0.92" />
+
+                    <ellipse cx="206" cy="164" rx="102" ry="92" fill="url(#furMain)" />
+                    <ellipse cx="206" cy="180" rx="72" ry="60" fill="url(#furLight)" />
+
+                    <g id="faceGroup" style="transform-origin: 206px 160px;">
+                      <ellipse cx="206" cy="150" rx="24" ry="18" fill="url(#noseGrad)" />
+                      <g id="eyesOpen">
+                        <ellipse id="eyeL" cx="168" cy="124" rx="10.5" ry="12" fill="#2d201c" />
+                        <ellipse id="eyeR" cx="244" cy="124" rx="10.5" ry="12" fill="#2d201c" />
+                        <ellipse id="eyeGlintL" cx="164" cy="119" rx="3" ry="3.8" fill="#ffffff" opacity="0.95" />
+                        <ellipse id="eyeGlintR" cx="240" cy="119" rx="3" ry="3.8" fill="#ffffff" opacity="0.95" />
+                      </g>
+                      <g id="eyesClosed" style="display:none;">
+                        <path d="M156 126 Q168 118 180 126" stroke="#2d201c" stroke-width="5" stroke-linecap="round" fill="none" />
+                        <path d="M232 126 Q244 118 256 126" stroke="#2d201c" stroke-width="5" stroke-linecap="round" fill="none" />
+                      </g>
+                      <path id="dogMouth" d="M190 174 Q206 190 222 174" stroke="#8d6152" stroke-width="5" stroke-linecap="round" fill="none" />
+                      <path id="dogNoseLine" d="M206 160 L206 173" stroke="#8d6152" stroke-width="4" stroke-linecap="round" />
+                      <ellipse id="tongue" cx="206" cy="184" rx="8" ry="6" fill="#ff8ea1" style="display:none;" />
+                      <ellipse id="blushL" cx="158" cy="158" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
+                      <ellipse id="blushR" cx="254" cy="158" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
+                    </g>
+
+                    <ellipse cx="206" cy="250" rx="88" ry="64" fill="url(#furMain)" />
+                    <ellipse cx="206" cy="260" rx="56" ry="38" fill="url(#furLight)" />
+                    <ellipse cx="164" cy="264" rx="34" ry="22" fill="url(#furLight)" />
+                    <ellipse cx="248" cy="264" rx="34" ry="22" fill="url(#furLight)" />
+                    <circle cx="160" cy="265" r="5.7" fill="#c9876b" />
+                    <circle cx="252" cy="265" r="5.7" fill="#c9876b" />
+                    <circle cx="188" cy="289" r="5.7" fill="#c9876b" />
+                    <circle cx="224" cy="289" r="5.7" fill="#c9876b" />
+                  </g>
+
+                  <g id="accBlueScarf" style="display:none"><path d="M148 220 Q206 238 264 220 L248 248 Q206 262 164 248 Z" fill="#7dc8ff" /><circle cx="244" cy="246" r="6" fill="#5eb5f4"/></g>
+                  <g id="accPinkBow" style="display:none"><ellipse cx="180" cy="80" rx="22" ry="14" fill="#ff9fca" /><ellipse cx="210" cy="80" rx="22" ry="14" fill="#ff9fca" /><circle cx="195" cy="80" r="7" fill="#ff79b6" /></g>
+                  <g id="accStarHat" style="display:none"><path d="M166 52 H244 L226 88 H184 Z" fill="#5c6cff" /><circle cx="206" cy="48" r="11" fill="#ffd75e" /></g>
+                  <g id="accCape" style="display:none"><path d="M140 220 Q206 282 272 220 L286 264 Q206 318 126 264 Z" fill="#ff7d8f" opacity="0.9" /></g>
+                  <g id="accStrawberry" style="display:none"><path d="M170 60 Q206 24 242 60 Q232 94 206 100 Q180 94 170 60 Z" fill="#ff5e74" /><path d="M192 44 Q206 29 220 44" stroke="#61a84a" stroke-width="6" stroke-linecap="round" fill="none" /><circle cx="190" cy="72" r="2.4" fill="#fff4c2" /><circle cx="210" cy="80" r="2.4" fill="#fff4c2" /><circle cx="223" cy="66" r="2.4" fill="#fff4c2" /></g>
                 </svg>
                 <div class="dog-name" id="dogName">陪陪</div>
                 <div class="dog-sub">今天看起來好想被摸摸</div>
