@@ -381,7 +381,7 @@
     const defaultConfig = {
       supabaseUrl: "https://zdjdjzbszgrijikamoy.supabase.co",
       supabaseKey: "sb_publishable_FzxPcGMJFZoDO96GtpzVzw_Cc67a9Ok",
-      syncEnabled: false
+      syncEnabled: true
     };
 
     let state = { ...defaultState };
@@ -433,10 +433,17 @@
 
     function loadConfig() {
       const raw = localStorage.getItem(SUPABASE_CONFIG_KEY);
-      if (!raw) return;
+    
+      if (!raw) {
+        config = { ...defaultConfig }; // 🔥 強制用你寫死的
+        return;
+      }
+    
       try {
         config = { ...defaultConfig, ...JSON.parse(raw) };
-      } catch {}
+      } catch {
+        config = { ...defaultConfig };
+      }
     }
 
     function getStatusText() {
