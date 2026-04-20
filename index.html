@@ -1,674 +1,890 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { Heart, Moon, UtensilsCrossed, MessageCircle, Sparkles, CalendarHeart, Shirt, RotateCcw, Users, Cloud, Copy, Home, Save, Wifi, WifiOff } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-
-const STORAGE_PREFIX = "peipei-dog-room-";
-const SUPABASE_CONFIG_KEY = "peipei-supabase-config-v1";
-
-const defaultState = {
-  roomId: "sweet-home",
-  currentUser: "你",
-  petName: "陪陪",
-  petMood: 72,
-  petEnergy: 68,
-  petHunger: 45,
-  petLove: 18,
-  lastActionText: "汪～我在，今天也一起度過吧。",
-  meVisitedToday: false,
-  partnerVisitedToday: false,
-  lastVisitDate: "",
-  meName: "你",
-  partnerName: "女友",
-  notes: [],
-  todayMood: "普通",
-  anniversary: "",
-  accessory: "藍色領巾",
-  streak: 0,
-  totalPets: 0,
-  totalFeeds: 0,
-  totalSleeps: 0,
-  totalVisits: 0,
-  diary: [],
-  background: "暖暖房間",
-  updatedAt: null,
-  updatedBy: "system",
-};
-
-const defaultConfig = {
-  supabaseUrl: "",
-  supabaseKey: "",
-  syncEnabled: false,
-};
-
-const accessories = ["藍色領巾", "粉色蝴蝶結", "星星帽", "小披風", "草莓帽", "無配件"];
-const moodOptions = ["開心", "普通", "累了", "煩躁", "想抱抱"];
-const backgrounds = ["暖暖房間", "窗邊午後", "星空小窩"];
-
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function clamp(num, min, max) {
-  return Math.max(min, Math.min(max, num));
-}
-
-function safeRoomId(v) {
-  return (v || "sweet-home").toLowerCase().replace(/[^a-z0-9-_]/g, "-").slice(0, 36) || "sweet-home";
-}
-
-function getStorageKey(roomId) {
-  return `${STORAGE_PREFIX}${safeRoomId(roomId)}`;
-}
-
-function getStatusText(state) {
-  if (state.meVisitedToday && state.partnerVisitedToday) return "今天你們都有來，狗狗超滿足。";
-  if (state.meVisitedToday) return `今天 ${state.meName} 有來陪牠。`;
-  if (state.partnerVisitedToday) return `今天 ${state.partnerName} 有來陪牠。`;
-  return "今天還沒有人來找牠。";
-}
-
-function getReaction(action, currentUser, todayMood) {
-  const userLabel = currentUser || "你";
-  const moodMap = {
-    開心: [`汪！${userLabel} 一來我就更開心了。`, `今天感覺亮亮的，想和 ${userLabel} 多待一下。`],
-    普通: [`我在這裡慢慢陪著 ${userLabel}。`, `${userLabel} 來了就很好。`],
-    累了: [`辛苦了，${userLabel} 先坐一下，我陪你。`, `今天很累的話，就靠著我休息一下。`],
-    煩躁: [`沒關係，今天可以不用那麼厲害。`, `把煩的事先放旁邊，先摸摸我。`],
-    想抱抱: [`汪…給你一個小小抱抱。`, `今天是抱抱模式，我會黏著 ${userLabel}。`],
-  };
-
-  const actionMap = {
-    pet: [`${userLabel} 摸摸我，我尾巴在搖。`, `再摸一下，我喜歡。`],
-    feed: [`這個好吃！我會記得 ${userLabel}。`, `吃飽就比較有力氣陪你們了。`],
-    sleep: [`我要先睡一下，醒來再陪 ${userLabel}。`, `晚安模式啟動，今天也辛苦了。`],
-    visit: moodMap[todayMood] || moodMap["普通"],
-    note: [`我會幫你把心意收好。`, `這句話暖暖的，我幫你保存了。`],
-    dress: [`新造型耶，我要炫耀一下。`, `這個配件今天很適合我。`],
-    mood: moodMap[todayMood] || moodMap["普通"],
-    save: [`我有把現在的樣子記住囉。`, `小屋已經好好存起來了。`],
-    sync: [`我已經連上雲端了，可以一起生活囉。`, `同步開啟，我會記得你們兩個的互動。`],
-  };
-
-  const arr = actionMap[action] || moodMap["普通"];
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function CuteDog({ mood, accessory, petName, background }) {
-  const blush = mood >= 70 ? 1 : 0.55;
-  const eyeY = mood < 35 ? 104 : 100;
-  const mouthPath = mood >= 70 ? "M150 133 Q160 143 170 133" : mood >= 45 ? "M150 135 Q160 139 170 135" : "M150 141 Q160 133 170 141";
-  const bgClass =
-    background === "窗邊午後"
-      ? "from-amber-100 via-orange-50 to-sky-100"
-      : background === "星空小窩"
-      ? "from-indigo-200 via-violet-100 to-pink-100"
-      : "from-rose-100 via-amber-50 to-sky-50";
-
-  return (
-    <div className={`relative rounded-[34px] bg-gradient-to-b ${bgClass} p-6 min-h-[420px] overflow-hidden`}>
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-white/45 backdrop-blur-[1px]" />
-      {background === "窗邊午後" && (
-        <>
-          <div className="absolute right-6 top-6 w-24 h-24 rounded-2xl border-4 border-white/70 bg-sky-100/80" />
-          <div className="absolute right-[5.5rem] top-6 w-1 h-24 bg-white/80" />
-          <div className="absolute right-6 top-[4.4rem] w-24 h-1 bg-white/80" />
-        </>
-      )}
-      {background === "星空小窩" && (
-        <>
-          <div className="absolute left-8 top-8 text-xl">✨</div>
-          <div className="absolute right-10 top-12 text-lg">⭐</div>
-          <div className="absolute left-16 top-20 text-sm">✨</div>
-        </>
-      )}
-
-      <div className="relative flex flex-col items-center justify-center pt-8">
-        <svg viewBox="0 0 320 320" className="w-[260px] h-[260px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.12)]">
-          <ellipse cx="160" cy="278" rx="78" ry="18" fill="rgba(0,0,0,0.08)" />
-          <ellipse cx="99" cy="90" rx="34" ry="54" fill="#d9b07b" transform="rotate(-26 99 90)" />
-          <ellipse cx="221" cy="90" rx="34" ry="54" fill="#d9b07b" transform="rotate(26 221 90)" />
-          <ellipse cx="103" cy="98" rx="19" ry="34" fill="#f3d7b2" transform="rotate(-26 103 98)" />
-          <ellipse cx="217" cy="98" rx="19" ry="34" fill="#f3d7b2" transform="rotate(26 217 98)" />
-          <ellipse cx="160" cy="154" rx="90" ry="84" fill="#f3c98f" />
-          <ellipse cx="160" cy="168" rx="58" ry="48" fill="#fff8ee" />
-          <ellipse cx="160" cy="124" rx="16" ry="12" fill="#51362b" />
-          <circle cx="126" cy={eyeY} r="7" fill="#3a2922" />
-          <circle cx="194" cy={eyeY} r="7" fill="#3a2922" />
-          <circle cx="123.5" cy={eyeY - 2} r="2" fill="white" />
-          <circle cx="191.5" cy={eyeY - 2} r="2" fill="white" />
-          <path d={mouthPath} stroke="#8a5b4a" strokeWidth="4" strokeLinecap="round" fill="none" />
-          <ellipse cx="120" cy="126" rx="12" ry="8" fill={`rgba(255, 156, 180, ${0.18 * blush})`} />
-          <ellipse cx="200" cy="126" rx="12" ry="8" fill={`rgba(255, 156, 180, ${0.18 * blush})`} />
-          <ellipse cx="135" cy="226" rx="28" ry="18" fill="#fff8ee" />
-          <ellipse cx="185" cy="226" rx="28" ry="18" fill="#fff8ee" />
-          <ellipse cx="160" cy="216" rx="72" ry="54" fill="#f3c98f" />
-          <ellipse cx="160" cy="224" rx="46" ry="30" fill="#fff8ee" />
-          <circle cx="122" cy="224" r="5" fill="#c9876b" />
-          <circle cx="198" cy="224" r="5" fill="#c9876b" />
-          <circle cx="145" cy="244" r="5" fill="#c9876b" />
-          <circle cx="175" cy="244" r="5" fill="#c9876b" />
-
-          {accessory === "藍色領巾" && <path d="M116 188 Q160 205 204 188 L194 210 Q160 224 126 210 Z" fill="#7dc8ff" />}
-          {accessory === "粉色蝴蝶結" && (<><ellipse cx="138" cy="74" rx="18" ry="12" fill="#ff9fca" /><ellipse cx="164" cy="74" rx="18" ry="12" fill="#ff9fca" /><circle cx="151" cy="74" r="6" fill="#ff79b6" /></>)}
-          {accessory === "星星帽" && (<><path d="M132 54 H188 L176 80 H144 Z" fill="#5c6cff" /><circle cx="160" cy="50" r="10" fill="#ffd75e" /></>)}
-          {accessory === "小披風" && <path d="M111 186 Q160 238 209 186 L220 224 Q160 268 100 224 Z" fill="#ff7d8f" opacity="0.9" />}
-          {accessory === "草莓帽" && (<><path d="M132 60 Q160 36 188 60 Q180 86 160 90 Q140 86 132 60 Z" fill="#ff5e74" /><path d="M150 49 Q160 38 170 49" stroke="#61a84a" strokeWidth="5" strokeLinecap="round" fill="none" /><circle cx="148" cy="66" r="2" fill="#fff4c2" /><circle cx="164" cy="72" r="2" fill="#fff4c2" /><circle cx="173" cy="62" r="2" fill="#fff4c2" /></>)}
-        </svg>
-        <div className="mt-3 text-2xl font-bold">{petName}</div>
-        <div className="mt-1 text-sm text-slate-500">今天看起來好想被摸摸</div>
-      </div>
-    </div>
-  );
-}
-
-export default function PeiPeiDogApp() {
-  const [state, setState] = useState(defaultState);
-  const [config, setConfig] = useState(defaultConfig);
-  const [noteText, setNoteText] = useState("");
-  const [diaryText, setDiaryText] = useState("");
-  const [roomInput, setRoomInput] = useState("sweet-home");
-  const [syncStatus, setSyncStatus] = useState("本機模式");
-  const [isSyncing, setIsSyncing] = useState(false);
-  const supabaseRef = useRef(null);
-  const channelRef = useRef(null);
-  const pushingRef = useRef(false);
-
-  function saveLocalRoom(nextState) {
-    localStorage.setItem(getStorageKey(nextState.roomId), JSON.stringify(nextState));
-  }
-
-  function loadLocalRoom(roomId) {
-    const raw = localStorage.getItem(getStorageKey(roomId));
-    if (!raw) {
-      const fresh = { ...defaultState, roomId: safeRoomId(roomId) };
-      setState(fresh);
-      setRoomInput(safeRoomId(roomId));
-      saveLocalRoom(fresh);
-      return fresh;
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>陪陪汪｜情侶共養小狗</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      color: #334155;
+      background: linear-gradient(180deg, #fff1f2 0%, #fff7ed 45%, #eff6ff 100%);
+      min-height: 100vh;
     }
-    try {
-      const parsed = JSON.parse(raw);
-      const merged = { ...defaultState, ...parsed, roomId: safeRoomId(roomId) };
-      setState(merged);
-      setRoomInput(safeRoomId(roomId));
-      return merged;
-    } catch {
-      const fresh = { ...defaultState, roomId: safeRoomId(roomId) };
-      setState(fresh);
-      setRoomInput(safeRoomId(roomId));
-      saveLocalRoom(fresh);
-      return fresh;
+    .wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
     }
-  }
-
-  function saveConfig(nextConfig) {
-    localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(nextConfig));
-    setConfig(nextConfig);
-  }
-
-  async function ensureRemoteRoom(client, currentState) {
-    const { data, error } = await client
-      .from("pet_rooms")
-      .select("room_id,state")
-      .eq("room_id", currentState.roomId)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    if (!data) {
-      const payload = { ...currentState, updatedAt: new Date().toISOString(), updatedBy: currentState.currentUser || "system" };
-      const { error: insertError } = await client.from("pet_rooms").upsert({ room_id: currentState.roomId, state: payload });
-      if (insertError) throw insertError;
-      return payload;
+    .left, .right { display: grid; gap: 20px; }
+    .card {
+      background: rgba(255,255,255,0.86);
+      border: 1px solid rgba(255,255,255,0.7);
+      border-radius: 28px;
+      box-shadow: 0 10px 30px rgba(148, 163, 184, 0.12);
+      padding: 20px;
+      backdrop-filter: blur(8px);
     }
-
-    const remoteState = { ...defaultState, ...(data.state || {}), roomId: currentState.roomId };
-    setState(remoteState);
-    saveLocalRoom(remoteState);
-    return remoteState;
-  }
-
-  async function pushStateToRemote(nextState) {
-    if (!config.syncEnabled || !supabaseRef.current) return;
-    try {
-      setIsSyncing(true);
-      pushingRef.current = true;
-      const payload = { ...nextState, updatedAt: new Date().toISOString(), updatedBy: nextState.currentUser || "system" };
-      const { error } = await supabaseRef.current.from("pet_rooms").upsert({ room_id: nextState.roomId, state: payload });
-      if (error) throw error;
-      saveLocalRoom(payload);
-      setSyncStatus("雲端已同步");
-    } catch (e) {
-      setSyncStatus(`同步失敗：${e.message}`);
-    } finally {
-      pushingRef.current = false;
-      setIsSyncing(false);
+    h1,h2,h3,p { margin: 0; }
+    .top-title {
+      display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;
+      margin-bottom: 14px;
     }
-  }
-
-  async function connectSupabase(nextConfig = config, currentState = state) {
-    if (!nextConfig.supabaseUrl || !nextConfig.supabaseKey || !nextConfig.syncEnabled) {
-      setSyncStatus("本機模式");
-      return;
+    .badges { display:flex; gap:8px; flex-wrap:wrap; }
+    .badge {
+      background:#f8fafc; border:1px solid #e2e8f0; padding:8px 12px; border-radius:999px; font-size:13px;
     }
-
-    try {
-      if (channelRef.current && supabaseRef.current) {
-        supabaseRef.current.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-
-      const client = createClient(nextConfig.supabaseUrl, nextConfig.supabaseKey);
-      supabaseRef.current = client;
-      await ensureRemoteRoom(client, currentState);
-
-      const channel = client
-        .channel(`room-${currentState.roomId}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "pet_rooms", filter: `room_id=eq.${currentState.roomId}` },
-          (payload) => {
-            if (pushingRef.current) return;
-            const nextRemote = payload?.new?.state;
-            if (!nextRemote) return;
-            const merged = { ...defaultState, ...nextRemote, roomId: currentState.roomId };
-            setState(merged);
-            saveLocalRoom(merged);
-            setSyncStatus(`收到雲端更新：${merged.updatedBy || "另一端"}`);
-          }
-        )
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") setSyncStatus("即時同步已連線");
-        });
-
-      channelRef.current = channel;
-      setSyncStatus("即時同步已連線");
-    } catch (e) {
-      setSyncStatus(`連線失敗：${e.message}`);
+    .badge.pink { background:#fff1f2; border-color:#fecdd3; }
+    .hero {
+      display:grid; grid-template-columns: 1.2fr 0.9fr; gap:20px; align-items:start;
     }
-  }
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const room = safeRoomId(params.get("room") || "sweet-home");
-    const initial = loadLocalRoom(room);
-
-    const rawConfig = localStorage.getItem(SUPABASE_CONFIG_KEY);
-    if (rawConfig) {
-      try {
-        const parsed = JSON.parse(rawConfig);
-        setConfig({ ...defaultConfig, ...parsed });
-      } catch {
-        setConfig(defaultConfig);
-      }
+    .dog-stage {
+      min-height: 460px;
+      border-radius: 32px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, #ffe4e6 0%, #fffbeb 50%, #eff6ff 100%);
     }
-
-    const today = todayStr();
-    setState((prev) => {
-      const base = initial || prev;
-      if (!base.lastVisitDate) return { ...base, lastVisitDate: today };
-      if (base.lastVisitDate !== today) {
-        const yesterdayLike = new Date();
-        yesterdayLike.setDate(yesterdayLike.getDate() - 1);
-        const y = `${yesterdayLike.getFullYear()}-${String(yesterdayLike.getMonth() + 1).padStart(2, "0")}-${String(yesterdayLike.getDate()).padStart(2, "0")}`;
-        const nextStreak = base.lastVisitDate === y ? base.streak + 1 : 1;
-        return {
-          ...base,
-          meVisitedToday: false,
-          partnerVisitedToday: false,
-          lastVisitDate: today,
-          streak: nextStreak,
-          petMood: clamp(base.petMood - 8, 0, 100),
-          petEnergy: clamp(base.petEnergy - 6, 0, 100),
-          petHunger: clamp(base.petHunger + 10, 0, 100),
-          lastActionText: "新的一天開始了，我在等你們。",
-        };
-      }
-      return base;
-    });
-  }, []);
-
-  useEffect(() => {
-    saveLocalRoom(state);
-  }, [state]);
-
-  useEffect(() => {
-    if (config.syncEnabled && config.supabaseUrl && config.supabaseKey && state.roomId) {
-      connectSupabase(config, state);
+    .dog-stage.window { background: linear-gradient(180deg, #fde68a 0%, #fff7ed 40%, #e0f2fe 100%); }
+    .dog-stage.night { background: linear-gradient(180deg, #c7d2fe 0%, #ede9fe 45%, #fce7f3 100%); }
+    .floor {
+      position:absolute; left:0; right:0; bottom:0; height:110px; background:rgba(255,255,255,0.38);
     }
-    return () => {
-      if (channelRef.current && supabaseRef.current) {
-        supabaseRef.current.removeChannel(channelRef.current);
-      }
-    };
-  }, [config.syncEnabled, config.supabaseUrl, config.supabaseKey, state.roomId]);
-
-  const anniversaryText = useMemo(() => {
-    if (!state.anniversary) return "尚未設定";
-    const today = new Date();
-    const ann = new Date(state.anniversary);
-    if (Number.isNaN(ann.getTime())) return "尚未設定";
-    const diff = Math.floor((today - ann) / (1000 * 60 * 60 * 24));
-    return `已經一起 ${diff >= 0 ? diff : 0} 天`;
-  }, [state.anniversary]);
-
-  const shareLink = useMemo(() => `${window.location.origin}${window.location.pathname}?room=${safeRoomId(state.roomId)}`, [state.roomId]);
-
-  function commitState(updater) {
-    setState((prev) => {
-      const updated = typeof updater === "function" ? updater(prev) : updater;
-      const finalState = { ...updated, updatedAt: new Date().toISOString(), updatedBy: updated.currentUser || "system" };
-      if (config.syncEnabled) pushStateToRemote(finalState);
-      return finalState;
-    });
-  }
-
-  function visitAs(user) {
-    commitState((prev) => ({
-      ...prev,
-      currentUser: user,
-      meVisitedToday: user === prev.meName ? true : prev.meVisitedToday,
-      partnerVisitedToday: user === prev.partnerName ? true : prev.partnerVisitedToday,
-      totalVisits: prev.totalVisits + 1,
-      petMood: clamp(prev.petMood + 4, 0, 100),
-      petEnergy: clamp(prev.petEnergy + 2, 0, 100),
-      lastActionText: getReaction("visit", user, prev.todayMood),
-    }));
-  }
-
-  function interact(type) {
-    commitState((prev) => {
-      let update = { ...prev };
-      if (type === "pet") {
-        update.petMood = clamp(prev.petMood + 10, 0, 100);
-        update.petLove = clamp(prev.petLove + 5, 0, 999);
-        update.totalPets = prev.totalPets + 1;
-      }
-      if (type === "feed") {
-        update.petHunger = clamp(prev.petHunger - 20, 0, 100);
-        update.petMood = clamp(prev.petMood + 6, 0, 100);
-        update.petLove = clamp(prev.petLove + 4, 0, 999);
-        update.totalFeeds = prev.totalFeeds + 1;
-      }
-      if (type === "sleep") {
-        update.petEnergy = clamp(prev.petEnergy + 22, 0, 100);
-        update.petMood = clamp(prev.petMood + 3, 0, 100);
-        update.totalSleeps = prev.totalSleeps + 1;
-      }
-      update.lastActionText = getReaction(type, prev.currentUser, prev.todayMood);
-      return update;
-    });
-  }
-
-  function saveNote() {
-    if (!noteText.trim()) return;
-    commitState((prev) => ({
-      ...prev,
-      notes: [{ text: noteText.trim(), from: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.notes].slice(0, 12),
-      petMood: clamp(prev.petMood + 4, 0, 100),
-      petLove: clamp(prev.petLove + 3, 0, 999),
-      lastActionText: getReaction("note", prev.currentUser, prev.todayMood),
-    }));
-    setNoteText("");
-  }
-
-  function saveDiary() {
-    if (!diaryText.trim()) return;
-    commitState((prev) => ({
-      ...prev,
-      diary: [{ text: diaryText.trim(), mood: prev.todayMood, by: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.diary].slice(0, 10),
-      lastActionText: `我記住今天的心情了：${prev.todayMood}`,
-    }));
-    setDiaryText("");
-  }
-
-  function saveNow() {
-    commitState((prev) => ({ ...prev, lastActionText: getReaction(config.syncEnabled ? "sync" : "save", prev.currentUser, prev.todayMood) }));
-  }
-
-  function switchRoom() {
-    const nextRoom = safeRoomId(roomInput);
-    const nextUrl = `${window.location.pathname}?room=${nextRoom}`;
-    window.history.replaceState({}, "", nextUrl);
-    const loaded = loadLocalRoom(nextRoom);
-    if (config.syncEnabled) connectSupabase(config, loaded);
-  }
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      commitState((prev) => ({ ...prev, lastActionText: "連結複製好了，傳給對方就能進同一個小屋。" }));
-    } catch {
-      commitState((prev) => ({ ...prev, lastActionText: "複製失敗了，但你可以手動複製上面的房間連結。" }));
+    .window-box {
+      position:absolute; right:26px; top:26px; width:96px; height:96px; border-radius:24px; border:4px solid rgba(255,255,255,0.75); background:rgba(186,230,253,0.75);
     }
-  }
-
-  function resetAll() {
-    localStorage.removeItem(getStorageKey(state.roomId));
-    const fresh = { ...defaultState, roomId: state.roomId };
-    setState(fresh);
-    setNoteText("");
-    setDiaryText("");
-    if (config.syncEnabled) pushStateToRemote(fresh);
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-orange-50 to-sky-50 p-4 md:p-8 text-slate-800">
-      <div className="mx-auto max-w-7xl grid gap-4 md:gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 grid gap-4">
-          <Card className="rounded-3xl shadow-lg border-0 bg-white/80 backdrop-blur">
-            <CardHeader className="pb-2">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-2xl md:text-3xl flex items-center gap-2">
-                    <Home className="w-6 h-6" /> {state.petName} 的情侶小屋
-                  </CardTitle>
-                  <p className="text-sm text-slate-500 mt-1">這版可以接 Supabase 做真正即時同步。</p>
-                </div>
-                <div className="flex gap-2 flex-wrap items-center">
-                  <Badge className="rounded-full px-3 py-1 text-sm">連續天數 {state.streak}</Badge>
-                  <Badge variant="secondary" className="rounded-full px-3 py-1 text-sm">愛心 {state.petLove}</Badge>
-                  <Badge variant="outline" className="rounded-full px-3 py-1 text-sm flex items-center gap-1">
-                    {config.syncEnabled ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />} {syncStatus}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-[1.25fr_0.95fr] gap-4 items-start">
-                <div className="grid gap-4">
-                  <CuteDog mood={state.petMood} accessory={state.accessory} petName={state.petName} background={state.background} />
-                  <div className="rounded-3xl bg-rose-50 p-4 text-sm md:text-base">
-                    <p className="font-medium">{state.petName} 說：</p>
-                    <p className="mt-2">{state.lastActionText}</p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4">
-                  <Card className="rounded-[28px] border-0 shadow-sm bg-white/90">
-                    <CardContent className="p-5 grid gap-4">
-                      <div>
-                        <div className="text-sm mb-2">現在來陪牠的是</div>
-                        <div className="flex gap-2 flex-wrap">
-                          <Button onClick={() => visitAs(state.meName)} className="rounded-2xl">{state.meName}</Button>
-                          <Button variant="secondary" onClick={() => visitAs(state.partnerName)} className="rounded-2xl">{state.partnerName}</Button>
-                        </div>
-                        <div className="mt-3 text-sm text-slate-500">{getStatusText(state)}</div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-2"><span>心情</span><span>{state.petMood}/100</span></div>
-                        <Progress value={state.petMood} className="h-3" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-2"><span>體力</span><span>{state.petEnergy}/100</span></div>
-                        <Progress value={state.petEnergy} className="h-3" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-2"><span>飢餓</span><span>{state.petHunger}/100</span></div>
-                        <Progress value={state.petHunger} className="h-3" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button onClick={() => interact("pet")} className="rounded-2xl h-14 text-base"><Heart className="w-4 h-4 mr-2" />摸摸</Button>
-                    <Button onClick={() => interact("feed")} variant="secondary" className="rounded-2xl h-14 text-base"><UtensilsCrossed className="w-4 h-4 mr-2" />餵食</Button>
-                    <Button onClick={() => interact("sleep")} variant="outline" className="rounded-2xl h-14 text-base"><Moon className="w-4 h-4 mr-2" />睡覺</Button>
-                    <Button onClick={() => commitState((p) => ({ ...p, accessory: accessories[(accessories.indexOf(p.accessory) + 1) % accessories.length], lastActionText: getReaction("dress", p.currentUser, p.todayMood) }))} variant="outline" className="rounded-2xl h-14 text-base"><Shirt className="w-4 h-4 mr-2" />換裝</Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card className="rounded-3xl shadow-sm border-0">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2"><MessageCircle className="w-5 h-5" /> 留一句話</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="例如：今天辛苦了，記得吃飯。" className="rounded-2xl" />
-                <Button onClick={saveNote} className="rounded-2xl">送給對方和 {state.petName}</Button>
-                <div className="space-y-2 max-h-64 overflow-auto pr-1">
-                  {state.notes.length === 0 ? <div className="text-sm text-slate-500">還沒有留言。</div> : state.notes.map((note, idx) => (
-                    <div key={idx} className="rounded-2xl bg-slate-50 p-3">
-                      <div className="text-sm font-medium">{note.from}</div>
-                      <div className="mt-1">{note.text}</div>
-                      <div className="mt-1 text-xs text-slate-500">{note.time}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-3xl shadow-sm border-0">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2"><CalendarHeart className="w-5 h-5" /> 今日心情與紀錄</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <div>
-                  <div className="text-sm mb-2">今天的心情</div>
-                  <div className="flex flex-wrap gap-2">
-                    {moodOptions.map((m) => (
-                      <Button key={m} variant={state.todayMood === m ? "default" : "secondary"} className="rounded-full" onClick={() => commitState((prev) => ({ ...prev, todayMood: m, lastActionText: getReaction("mood", prev.currentUser, m) }))}>{m}</Button>
-                    ))}
-                  </div>
-                </div>
-                <Textarea value={diaryText} onChange={(e) => setDiaryText(e.target.value)} placeholder="寫一句今天想記下來的話。" className="min-h-[100px] rounded-2xl" />
-                <Button onClick={saveDiary} className="rounded-2xl">存下今天</Button>
-                <div className="space-y-2 max-h-64 overflow-auto pr-1">
-                  {state.diary.length === 0 ? <div className="text-sm text-slate-500">還沒有紀錄。</div> : state.diary.map((item, idx) => (
-                    <div key={idx} className="rounded-2xl bg-amber-50 p-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary">{item.by}</Badge>
-                        <Badge variant="outline">{item.mood}</Badge>
-                      </div>
-                      <div className="mt-2">{item.text}</div>
-                      <div className="mt-1 text-xs text-slate-500">{item.time}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+    .window-box::before, .window-box::after {
+      content:""; position:absolute; background:rgba(255,255,255,0.86);
+    }
+    .window-box::before { width:1px; height:100%; left:50%; top:0; }
+    .window-box::after { height:1px; width:100%; top:50%; left:0; }
+    .star { position:absolute; font-size:22px; }
+    .star.s1 { left:32px; top:28px; }
+    .star.s2 { right:38px; top:54px; }
+    .star.s3 { left:76px; top:100px; font-size:16px; }
+    .dog-box { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; padding-top:20px; }
+    .dog-name { font-size: 30px; font-weight: 800; margin-top: 10px; }
+    .dog-sub { font-size: 14px; color:#64748b; margin-top:4px; }
+    .speech {
+      background:#fff1f2; padding:16px; border-radius:24px; font-size:16px; line-height:1.6;
+    }
+    .panel { display:grid; gap:16px; }
+    .section-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .muted { color:#64748b; font-size:14px; }
+    .status-line { font-size:14px; color:#64748b; margin-top:10px; }
+    .progress-block { display:grid; gap:14px; }
+    .progress-label { display:flex; justify-content:space-between; font-size:14px; margin-bottom:6px; }
+    .progress-track {
+      width:100%; height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden;
+    }
+    .progress-fill {
+      height:100%; border-radius:999px; background: linear-gradient(90deg, #fb7185, #f59e0b, #60a5fa);
+      width: 0%; transition: width .25s ease;
+    }
+    .btn-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:12px; }
+    button, .fake-btn {
+      border:none; border-radius:18px; padding:14px 16px; font-size:15px; font-weight:700; cursor:pointer;
+      background:#ffd6a5; color:#334155; transition:.2s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button.secondary { background:#f8fafc; border:1px solid #e2e8f0; }
+    button.soft { background:#fff1f2; }
+    button.blue { background:#dbeafe; }
+    button.full { width:100%; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    label { display:block; font-size:14px; margin-bottom:8px; font-weight:700; }
+    input, textarea {
+      width:100%; border-radius:18px; border:1px solid #e2e8f0; padding:14px 16px; font-size:15px; outline:none; background:#fff;
+    }
+    textarea { min-height:100px; resize:vertical; }
+    .list { display:grid; gap:10px; max-height:280px; overflow:auto; }
+    .item {
+      background:#f8fafc; border-radius:18px; padding:14px;
+    }
+    .item.warm { background:#fffbeb; }
+    .item-top { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+    .tag { font-size:12px; background:#eef2ff; color:#4338ca; padding:4px 8px; border-radius:999px; }
+    .tag.gray { background:#f1f5f9; color:#475569; }
+    .tag.pink { background:#ffe4e6; color:#be123c; }
+    .row { display:flex; gap:10px; }
+    .small { font-size:12px; color:#64748b; margin-top:6px; }
+    .settings-grid { display:grid; gap:14px; }
+    .choice-row, .mood-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .pill {
+      padding:10px 14px; border-radius:999px; border:1px solid #e2e8f0; background:#f8fafc; cursor:pointer; font-size:14px;
+    }
+    .pill.active { background:#fed7aa; border-color:#fdba74; }
+    .stat-row {
+      display:flex; justify-content:space-between; background:#f8fafc; border-radius:18px; padding:14px;
+      font-size:14px;
+    }
+    .sync-box { background:#eff6ff; border-radius:18px; padding:14px; font-size:14px; line-height:1.6; }
+    .danger { color:#b91c1c; }
+    .empty { color:#94a3b8; font-size:14px; }
+    .footer-tip { font-size:13px; color:#64748b; line-height:1.6; }
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns: 1fr; }
+      .hero, .grid-2 { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="left">
+      <div class="card">
+        <div class="top-title">
+          <div>
+            <h1 class="section-title" id="titleName">陪陪 的情侶小屋</h1>
+            <p class="muted">GitHub Pages 可直接用的單檔版本，支援 Supabase 即時同步。</p>
+          </div>
+          <div class="badges">
+            <div class="badge" id="badgeStreak">連續天數 0</div>
+            <div class="badge pink" id="badgeLove">愛心 0</div>
+            <div class="badge" id="badgeSync">本機模式</div>
           </div>
         </div>
 
-        <div className="grid gap-4">
-          <Card className="rounded-3xl shadow-sm border-0">
-            <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2"><Users className="w-5 h-5" /> 小屋設定</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <div>
-                <div className="text-sm mb-2">你的名字</div>
-                <Input value={state.meName} onChange={(e) => commitState((prev) => ({ ...prev, meName: e.target.value || "你" }))} className="rounded-2xl" />
+        <div class="hero">
+          <div class="panel">
+            <div class="dog-stage" id="dogStage">
+              <div class="floor"></div>
+              <div class="window-box" id="windowDecor" style="display:none"></div>
+              <div class="star s1" id="star1" style="display:none">✨</div>
+              <div class="star s2" id="star2" style="display:none">⭐</div>
+              <div class="star s3" id="star3" style="display:none">✨</div>
+              <div class="dog-box">
+                <svg id="dogSvg" viewBox="0 0 320 320" width="270" height="270" aria-label="dog">
+                  <ellipse cx="160" cy="278" rx="78" ry="18" fill="rgba(0,0,0,0.08)" />
+                  <ellipse cx="99" cy="90" rx="34" ry="54" fill="#d9b07b" transform="rotate(-26 99 90)" />
+                  <ellipse cx="221" cy="90" rx="34" ry="54" fill="#d9b07b" transform="rotate(26 221 90)" />
+                  <ellipse cx="103" cy="98" rx="19" ry="34" fill="#f3d7b2" transform="rotate(-26 103 98)" />
+                  <ellipse cx="217" cy="98" rx="19" ry="34" fill="#f3d7b2" transform="rotate(26 217 98)" />
+                  <ellipse cx="160" cy="154" rx="90" ry="84" fill="#f3c98f" />
+                  <ellipse cx="160" cy="168" rx="58" ry="48" fill="#fff8ee" />
+                  <ellipse cx="160" cy="124" rx="16" ry="12" fill="#51362b" />
+                  <circle id="eyeL" cx="126" cy="100" r="7" fill="#3a2922" />
+                  <circle id="eyeR" cx="194" cy="100" r="7" fill="#3a2922" />
+                  <circle id="eyeGlintL" cx="123.5" cy="98" r="2" fill="white" />
+                  <circle id="eyeGlintR" cx="191.5" cy="98" r="2" fill="white" />
+                  <path id="dogMouth" d="M150 135 Q160 139 170 135" stroke="#8a5b4a" stroke-width="4" stroke-linecap="round" fill="none" />
+                  <ellipse id="blushL" cx="120" cy="126" rx="12" ry="8" fill="rgba(255, 156, 180, 0.18)" />
+                  <ellipse id="blushR" cx="200" cy="126" rx="12" ry="8" fill="rgba(255, 156, 180, 0.18)" />
+                  <ellipse cx="135" cy="226" rx="28" ry="18" fill="#fff8ee" />
+                  <ellipse cx="185" cy="226" rx="28" ry="18" fill="#fff8ee" />
+                  <ellipse cx="160" cy="216" rx="72" ry="54" fill="#f3c98f" />
+                  <ellipse cx="160" cy="224" rx="46" ry="30" fill="#fff8ee" />
+                  <circle cx="122" cy="224" r="5" fill="#c9876b" />
+                  <circle cx="198" cy="224" r="5" fill="#c9876b" />
+                  <circle cx="145" cy="244" r="5" fill="#c9876b" />
+                  <circle cx="175" cy="244" r="5" fill="#c9876b" />
+                  <g id="accBlueScarf" style="display:none"><path d="M116 188 Q160 205 204 188 L194 210 Q160 224 126 210 Z" fill="#7dc8ff" /></g>
+                  <g id="accPinkBow" style="display:none"><ellipse cx="138" cy="74" rx="18" ry="12" fill="#ff9fca" /><ellipse cx="164" cy="74" rx="18" ry="12" fill="#ff9fca" /><circle cx="151" cy="74" r="6" fill="#ff79b6" /></g>
+                  <g id="accStarHat" style="display:none"><path d="M132 54 H188 L176 80 H144 Z" fill="#5c6cff" /><circle cx="160" cy="50" r="10" fill="#ffd75e" /></g>
+                  <g id="accCape" style="display:none"><path d="M111 186 Q160 238 209 186 L220 224 Q160 268 100 224 Z" fill="#ff7d8f" opacity="0.9" /></g>
+                  <g id="accStrawberry" style="display:none"><path d="M132 60 Q160 36 188 60 Q180 86 160 90 Q140 86 132 60 Z" fill="#ff5e74" /><path d="M150 49 Q160 38 170 49" stroke="#61a84a" stroke-width="5" stroke-linecap="round" fill="none" /><circle cx="148" cy="66" r="2" fill="#fff4c2" /><circle cx="164" cy="72" r="2" fill="#fff4c2" /><circle cx="173" cy="62" r="2" fill="#fff4c2" /></g>
+                </svg>
+                <div class="dog-name" id="dogName">陪陪</div>
+                <div class="dog-sub">今天看起來好想被摸摸</div>
               </div>
-              <div>
-                <div className="text-sm mb-2">對方名字</div>
-                <Input value={state.partnerName} onChange={(e) => commitState((prev) => ({ ...prev, partnerName: e.target.value || "女友" }))} className="rounded-2xl" />
+            </div>
+            <div class="speech" id="speech">汪～我在，今天也一起度過吧。</div>
+          </div>
+
+          <div class="panel">
+            <div class="card" style="padding:18px;">
+              <label>現在來陪牠的是</label>
+              <div class="row">
+                <button id="btnVisitMe">你</button>
+                <button class="secondary" id="btnVisitPartner">女友</button>
               </div>
-              <div>
-                <div className="text-sm mb-2">狗狗名字</div>
-                <Input value={state.petName} onChange={(e) => commitState((prev) => ({ ...prev, petName: e.target.value || "陪陪" }))} className="rounded-2xl" />
-              </div>
-              <div>
-                <div className="text-sm mb-2">房間背景</div>
-                <div className="flex flex-wrap gap-2">
-                  {backgrounds.map((b) => (
-                    <Button key={b} variant={state.background === b ? "default" : "secondary"} className="rounded-full" onClick={() => commitState((prev) => ({ ...prev, background: b }))}>{b}</Button>
-                  ))}
+              <div class="status-line" id="todayStatus">今天還沒有人來找牠。</div>
+            </div>
+
+            <div class="card" style="padding:18px;">
+              <div class="progress-block">
+                <div>
+                  <div class="progress-label"><span>心情</span><span id="moodText">72/100</span></div>
+                  <div class="progress-track"><div class="progress-fill" id="moodBar"></div></div>
+                </div>
+                <div>
+                  <div class="progress-label"><span>體力</span><span id="energyText">68/100</span></div>
+                  <div class="progress-track"><div class="progress-fill" id="energyBar"></div></div>
+                </div>
+                <div>
+                  <div class="progress-label"><span>飢餓</span><span id="hungerText">45/100</span></div>
+                  <div class="progress-track"><div class="progress-fill" id="hungerBar"></div></div>
                 </div>
               </div>
-              <div>
-                <div className="text-sm mb-2">紀念日</div>
-                <Input type="date" value={state.anniversary} onChange={(e) => commitState((prev) => ({ ...prev, anniversary: e.target.value }))} className="rounded-2xl" />
-                <div className="text-sm text-slate-500 mt-2">{anniversaryText}</div>
-              </div>
-              <Button onClick={saveNow} className="rounded-2xl"><Save className="w-4 h-4 mr-2" />儲存現在的小屋</Button>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card className="rounded-3xl shadow-sm border-0">
-            <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2"><Cloud className="w-5 h-5" /> Supabase 即時同步</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm">
-              <div>
-                <div className="text-sm mb-2">Supabase URL</div>
-                <Input value={config.supabaseUrl} onChange={(e) => saveConfig({ ...config, supabaseUrl: e.target.value })} placeholder="https://xxxx.supabase.co" className="rounded-2xl" />
-              </div>
-              <div>
-                <div className="text-sm mb-2">Publishable / anon key</div>
-                <Input value={config.supabaseKey} onChange={(e) => saveConfig({ ...config, supabaseKey: e.target.value })} placeholder="eyJ..." className="rounded-2xl" />
-              </div>
-              <div>
-                <div className="text-sm mb-2">房間代碼</div>
-                <div className="flex gap-2">
-                  <Input value={roomInput} onChange={(e) => setRoomInput(e.target.value)} className="rounded-2xl" />
-                  <Button onClick={switchRoom} className="rounded-2xl">進入</Button>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm mb-2">房間連結</div>
-                <Input value={shareLink} readOnly className="rounded-2xl" />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={copyLink} className="rounded-2xl flex-1"><Copy className="w-4 h-4 mr-2" />複製連結</Button>
-                <Button onClick={() => { const next = { ...config, syncEnabled: !config.syncEnabled }; saveConfig(next); if (!config.syncEnabled) connectSupabase(next, state); }} className="rounded-2xl flex-1">{config.syncEnabled ? "關閉同步" : "開啟同步"}</Button>
-              </div>
-              <div className="rounded-2xl bg-sky-50 p-3">
-                <div className="font-medium">同步狀態</div>
-                <div className="mt-1 text-slate-600">{isSyncing ? "同步中..." : syncStatus}</div>
-              </div>
-            </CardContent>
-          </Card>
+            <div class="btn-grid">
+              <button id="btnPet">摸摸</button>
+              <button class="soft" id="btnFeed">餵食</button>
+              <button class="secondary" id="btnSleep">睡覺</button>
+              <button class="blue" id="btnDress">換裝</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <Card className="rounded-3xl shadow-sm border-0">
-            <CardHeader>
-              <CardTitle className="text-xl">{state.petName} 小檔案</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm">
-              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>總來訪</span><span>{state.totalVisits}</span></div>
-              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>摸摸次數</span><span>{state.totalPets}</span></div>
-              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>餵食次數</span><span>{state.totalFeeds}</span></div>
-              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>睡覺次數</span><span>{state.totalSleeps}</span></div>
-              <div className="rounded-2xl bg-rose-50 p-3">
-                <div className="font-medium">今日狀態</div>
-                <div className="mt-1 text-slate-600">{getStatusText(state)}</div>
-              </div>
-            </CardContent>
-          </Card>
+      <div class="grid-2">
+        <div class="card">
+          <h2 class="section-title" style="font-size:22px;">留一句話</h2>
+          <p class="muted" style="margin-bottom:14px;">給對方，也給陪陪留下一點今天的心意。</p>
+          <div class="settings-grid">
+            <div>
+              <input id="noteInput" placeholder="例如：今天辛苦了，記得吃飯。" />
+            </div>
+            <div><button class="full" id="btnSaveNote">送給對方和陪陪</button></div>
+            <div class="list" id="noteList"></div>
+          </div>
+        </div>
 
-          <Button variant="outline" onClick={resetAll} className="rounded-2xl h-12"><RotateCcw className="w-4 h-4 mr-2" />重設這個房間</Button>
+        <div class="card">
+          <h2 class="section-title" style="font-size:22px;">今日心情與紀錄</h2>
+          <p class="muted" style="margin-bottom:14px;">你們可以把今天的狀態和一句小日記記下來。</p>
+          <div class="settings-grid">
+            <div>
+              <label>今天的心情</label>
+              <div class="mood-row" id="moodButtons"></div>
+            </div>
+            <div><textarea id="diaryInput" placeholder="寫一句今天想記下來的話。"></textarea></div>
+            <div><button class="full" id="btnSaveDiary">存下今天</button></div>
+            <div class="list" id="diaryList"></div>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
+
+    <div class="right">
+      <div class="card">
+        <h2 class="section-title" style="font-size:22px;">小屋設定</h2>
+        <p class="muted" style="margin-bottom:14px;">名字都可以改，這隻狗就是你們自己的。</p>
+        <div class="settings-grid">
+          <div>
+            <label>你的名字</label>
+            <input id="meNameInput" />
+          </div>
+          <div>
+            <label>對方名字</label>
+            <input id="partnerNameInput" />
+          </div>
+          <div>
+            <label>狗狗名字</label>
+            <input id="petNameInput" />
+          </div>
+          <div>
+            <label>房間背景</label>
+            <div class="choice-row" id="backgroundButtons"></div>
+          </div>
+          <div>
+            <label>紀念日</label>
+            <input id="anniversaryInput" type="date" />
+            <div class="small" id="anniversaryText">尚未設定</div>
+          </div>
+          <div><button class="full" id="btnSaveNow">儲存現在的小屋</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title" style="font-size:22px;">Supabase 即時同步</h2>
+        <p class="muted" style="margin-bottom:14px;">GitHub Pages 可以直接連 Supabase，不用 React build。</p>
+        <div class="settings-grid">
+          <div>
+            <label>Supabase URL</label>
+            <input id="supabaseUrlInput" placeholder="https://your-project.supabase.co" />
+          </div>
+          <div>
+            <label>Publishable / anon key</label>
+            <input id="supabaseKeyInput" placeholder="sb_publishable_xxx 或 anon key" />
+          </div>
+          <div>
+            <label>房間代碼</label>
+            <div class="row">
+              <input id="roomInput" />
+              <button id="btnSwitchRoom">進入</button>
+            </div>
+          </div>
+          <div>
+            <label>房間連結</label>
+            <input id="shareLinkInput" readonly />
+          </div>
+          <div class="row">
+            <button class="secondary" style="flex:1" id="btnCopyLink">複製連結</button>
+            <button style="flex:1" id="btnToggleSync">開啟同步</button>
+          </div>
+          <div class="sync-box" id="syncStatusBox">同步狀態：本機模式</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title" style="font-size:22px;">小檔案</h2>
+        <div class="settings-grid">
+          <div class="stat-row"><span>總來訪</span><span id="statVisits">0</span></div>
+          <div class="stat-row"><span>摸摸次數</span><span id="statPets">0</span></div>
+          <div class="stat-row"><span>餵食次數</span><span id="statFeeds">0</span></div>
+          <div class="stat-row"><span>睡覺次數</span><span id="statSleeps">0</span></div>
+          <div class="sync-box" id="todayStateBox">今天還沒有人來找牠。</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="footer-tip">提醒：可以公開放的是 publishable / anon key，不要把 secret key 放進前端頁面。</p>
+        <div style="margin-top:14px;"><button class="full secondary" id="btnResetRoom">重設這個房間</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_PREFIX = "peipei-dog-room-";
+    const SUPABASE_CONFIG_KEY = "peipei-supabase-config-v2";
+    const ACCESSORIES = ["藍色領巾", "粉色蝴蝶結", "星星帽", "小披風", "草莓帽", "無配件"];
+    const MOODS = ["開心", "普通", "累了", "煩躁", "想抱抱"];
+    const BACKGROUNDS = ["暖暖房間", "窗邊午後", "星空小窩"];
+
+    const defaultState = {
+      roomId: "sweet-home",
+      currentUser: "你",
+      petName: "陪陪",
+      petMood: 72,
+      petEnergy: 68,
+      petHunger: 45,
+      petLove: 18,
+      lastActionText: "汪～我在，今天也一起度過吧。",
+      meVisitedToday: false,
+      partnerVisitedToday: false,
+      lastVisitDate: "",
+      meName: "你",
+      partnerName: "女友",
+      notes: [],
+      todayMood: "普通",
+      anniversary: "",
+      accessory: "藍色領巾",
+      streak: 0,
+      totalPets: 0,
+      totalFeeds: 0,
+      totalSleeps: 0,
+      totalVisits: 0,
+      diary: [],
+      background: "暖暖房間",
+      updatedAt: null,
+      updatedBy: "system"
+    };
+
+    const defaultConfig = {
+      supabaseUrl: "",
+      supabaseKey: "",
+      syncEnabled: false
+    };
+
+    let state = { ...defaultState };
+    let config = { ...defaultConfig };
+    let client = null;
+    let channel = null;
+    let isSyncing = false;
+    let pushing = false;
+
+    function safeRoomId(v) {
+      return (v || "sweet-home").toLowerCase().replace(/[^a-z0-9-_]/g, "-").slice(0, 36) || "sweet-home";
+    }
+
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function clamp(num, min, max) {
+      return Math.max(min, Math.min(max, num));
+    }
+
+    function getStorageKey(roomId) {
+      return `${STORAGE_PREFIX}${safeRoomId(roomId)}`;
+    }
+
+    function saveLocalRoom() {
+      localStorage.setItem(getStorageKey(state.roomId), JSON.stringify(state));
+    }
+
+    function loadLocalRoom(roomId) {
+      const raw = localStorage.getItem(getStorageKey(roomId));
+      if (!raw) {
+        state = { ...defaultState, roomId: safeRoomId(roomId) };
+        saveLocalRoom();
+        return;
+      }
+      try {
+        state = { ...defaultState, ...JSON.parse(raw), roomId: safeRoomId(roomId) };
+      } catch {
+        state = { ...defaultState, roomId: safeRoomId(roomId) };
+        saveLocalRoom();
+      }
+    }
+
+    function saveConfig() {
+      localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(config));
+    }
+
+    function loadConfig() {
+      const raw = localStorage.getItem(SUPABASE_CONFIG_KEY);
+      if (!raw) return;
+      try {
+        config = { ...defaultConfig, ...JSON.parse(raw) };
+      } catch {}
+    }
+
+    function getStatusText() {
+      if (state.meVisitedToday && state.partnerVisitedToday) return "今天你們都有來，狗狗超滿足。";
+      if (state.meVisitedToday) return `今天 ${state.meName} 有來陪牠。`;
+      if (state.partnerVisitedToday) return `今天 ${state.partnerName} 有來陪牠。`;
+      return "今天還沒有人來找牠。";
+    }
+
+    function getReaction(action, currentUser, todayMood) {
+      const userLabel = currentUser || "你";
+      const moodMap = {
+        開心: [`汪！${userLabel} 一來我就更開心了。`, `今天感覺亮亮的，想和 ${userLabel} 多待一下。`],
+        普通: [`我在這裡慢慢陪著 ${userLabel}。`, `${userLabel} 來了就很好。`],
+        累了: [`辛苦了，${userLabel} 先坐一下，我陪你。`, `今天很累的話，就靠著我休息一下。`],
+        煩躁: [`沒關係，今天可以不用那麼厲害。`, `把煩的事先放旁邊，先摸摸我。`],
+        想抱抱: [`汪…給你一個小小抱抱。`, `今天是抱抱模式，我會黏著 ${userLabel}。`],
+      };
+      const actionMap = {
+        pet: [`${userLabel} 摸摸我，我尾巴在搖。`, `再摸一下，我喜歡。`],
+        feed: [`這個好吃！我會記得 ${userLabel}。`, `吃飽就比較有力氣陪你們了。`],
+        sleep: [`我要先睡一下，醒來再陪 ${userLabel}。`, `晚安模式啟動，今天也辛苦了。`],
+        visit: moodMap[todayMood] || moodMap["普通"],
+        note: [`我會幫你把心意收好。`, `這句話暖暖的，我幫你保存了。`],
+        dress: [`新造型耶，我要炫耀一下。`, `這個配件今天很適合我。`],
+        mood: moodMap[todayMood] || moodMap["普通"],
+        save: [`我有把現在的樣子記住囉。`, `小屋已經好好存起來了。`],
+        sync: [`我已經連上雲端了，可以一起生活囉。`, `同步開啟，我會記得你們兩個的互動。`],
+      };
+      const arr = actionMap[action] || moodMap["普通"];
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function setSyncStatus(text) {
+      document.getElementById("badgeSync").textContent = text;
+      document.getElementById("syncStatusBox").textContent = `同步狀態：${text}`;
+    }
+
+    function getAnniversaryText() {
+      if (!state.anniversary) return "尚未設定";
+      const today = new Date();
+      const ann = new Date(state.anniversary);
+      if (Number.isNaN(ann.getTime())) return "尚未設定";
+      const diff = Math.floor((today - ann) / (1000 * 60 * 60 * 24));
+      return `已經一起 ${diff >= 0 ? diff : 0} 天`;
+    }
+
+    function getShareLink() {
+      return `${window.location.origin}${window.location.pathname}?room=${safeRoomId(state.roomId)}`;
+    }
+
+    function applyDailyReset() {
+      const today = todayStr();
+      if (!state.lastVisitDate) {
+        state.lastVisitDate = today;
+        return;
+      }
+      if (state.lastVisitDate !== today) {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        const yesterday = `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,"0")}-${String(y.getDate()).padStart(2,"0")}`;
+        state.streak = state.lastVisitDate === yesterday ? state.streak + 1 : 1;
+        state.meVisitedToday = false;
+        state.partnerVisitedToday = false;
+        state.lastVisitDate = today;
+        state.petMood = clamp(state.petMood - 8, 0, 100);
+        state.petEnergy = clamp(state.petEnergy - 6, 0, 100);
+        state.petHunger = clamp(state.petHunger + 10, 0, 100);
+        state.lastActionText = "新的一天開始了，我在等你們。";
+      }
+    }
+
+    function updateDogVisual() {
+      const eyeY = state.petMood < 35 ? 104 : 100;
+      document.getElementById("eyeL").setAttribute("cy", eyeY);
+      document.getElementById("eyeR").setAttribute("cy", eyeY);
+      document.getElementById("eyeGlintL").setAttribute("cy", eyeY - 2);
+      document.getElementById("eyeGlintR").setAttribute("cy", eyeY - 2);
+      const mouth = state.petMood >= 70 ? "M150 133 Q160 143 170 133" : state.petMood >= 45 ? "M150 135 Q160 139 170 135" : "M150 141 Q160 133 170 141";
+      document.getElementById("dogMouth").setAttribute("d", mouth);
+      const blushOpacity = state.petMood >= 70 ? 0.18 : 0.1;
+      document.getElementById("blushL").setAttribute("fill", `rgba(255, 156, 180, ${blushOpacity})`);
+      document.getElementById("blushR").setAttribute("fill", `rgba(255, 156, 180, ${blushOpacity})`);
+
+      ["accBlueScarf","accPinkBow","accStarHat","accCape","accStrawberry"].forEach(id => {
+        document.getElementById(id).style.display = "none";
+      });
+      if (state.accessory === "藍色領巾") document.getElementById("accBlueScarf").style.display = "block";
+      if (state.accessory === "粉色蝴蝶結") document.getElementById("accPinkBow").style.display = "block";
+      if (state.accessory === "星星帽") document.getElementById("accStarHat").style.display = "block";
+      if (state.accessory === "小披風") document.getElementById("accCape").style.display = "block";
+      if (state.accessory === "草莓帽") document.getElementById("accStrawberry").style.display = "block";
+
+      const stage = document.getElementById("dogStage");
+      stage.className = "dog-stage";
+      document.getElementById("windowDecor").style.display = "none";
+      document.getElementById("star1").style.display = "none";
+      document.getElementById("star2").style.display = "none";
+      document.getElementById("star3").style.display = "none";
+      if (state.background === "窗邊午後") {
+        stage.classList.add("window");
+        document.getElementById("windowDecor").style.display = "block";
+      }
+      if (state.background === "星空小窩") {
+        stage.classList.add("night");
+        document.getElementById("star1").style.display = "block";
+        document.getElementById("star2").style.display = "block";
+        document.getElementById("star3").style.display = "block";
+      }
+    }
+
+    function renderMoodButtons() {
+      const wrap = document.getElementById("moodButtons");
+      wrap.innerHTML = "";
+      MOODS.forEach(m => {
+        const btn = document.createElement("button");
+        btn.className = `pill ${state.todayMood === m ? "active" : ""}`;
+        btn.textContent = m;
+        btn.onclick = () => commitState(prev => ({ ...prev, todayMood: m, lastActionText: getReaction("mood", prev.currentUser, m) }));
+        wrap.appendChild(btn);
+      });
+    }
+
+    function renderBackgroundButtons() {
+      const wrap = document.getElementById("backgroundButtons");
+      wrap.innerHTML = "";
+      BACKGROUNDS.forEach(bg => {
+        const btn = document.createElement("button");
+        btn.className = `pill ${state.background === bg ? "active" : ""}`;
+        btn.textContent = bg;
+        btn.onclick = () => commitState(prev => ({ ...prev, background: bg }));
+        wrap.appendChild(btn);
+      });
+    }
+
+    function renderNotes() {
+      const list = document.getElementById("noteList");
+      list.innerHTML = "";
+      if (!state.notes.length) {
+        list.innerHTML = '<div class="empty">還沒有留言。</div>';
+        return;
+      }
+      state.notes.forEach(note => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="item-top"><span class="tag pink">${escapeHtml(note.from)}</span></div><div>${escapeHtml(note.text)}</div><div class="small">${escapeHtml(note.time)}</div>`;
+        list.appendChild(div);
+      });
+    }
+
+    function renderDiary() {
+      const list = document.getElementById("diaryList");
+      list.innerHTML = "";
+      if (!state.diary.length) {
+        list.innerHTML = '<div class="empty">還沒有紀錄。</div>';
+        return;
+      }
+      state.diary.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "item warm";
+        div.innerHTML = `<div class="item-top"><span class="tag">${escapeHtml(item.by)}</span><span class="tag gray">${escapeHtml(item.mood)}</span></div><div>${escapeHtml(item.text)}</div><div class="small">${escapeHtml(item.time)}</div>`;
+        list.appendChild(div);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function render() {
+      document.getElementById("titleName").textContent = `${state.petName} 的情侶小屋`;
+      document.getElementById("dogName").textContent = state.petName;
+      document.getElementById("speech").textContent = state.lastActionText;
+      document.getElementById("badgeStreak").textContent = `連續天數 ${state.streak}`;
+      document.getElementById("badgeLove").textContent = `愛心 ${state.petLove}`;
+      document.getElementById("todayStatus").textContent = getStatusText();
+      document.getElementById("todayStateBox").textContent = getStatusText();
+
+      document.getElementById("moodText").textContent = `${state.petMood}/100`;
+      document.getElementById("energyText").textContent = `${state.petEnergy}/100`;
+      document.getElementById("hungerText").textContent = `${state.petHunger}/100`;
+      document.getElementById("moodBar").style.width = `${state.petMood}%`;
+      document.getElementById("energyBar").style.width = `${state.petEnergy}%`;
+      document.getElementById("hungerBar").style.width = `${state.petHunger}%`;
+
+      document.getElementById("btnVisitMe").textContent = state.meName;
+      document.getElementById("btnVisitPartner").textContent = state.partnerName;
+      document.getElementById("meNameInput").value = state.meName;
+      document.getElementById("partnerNameInput").value = state.partnerName;
+      document.getElementById("petNameInput").value = state.petName;
+      document.getElementById("anniversaryInput").value = state.anniversary || "";
+      document.getElementById("anniversaryText").textContent = getAnniversaryText();
+      document.getElementById("roomInput").value = state.roomId;
+      document.getElementById("shareLinkInput").value = getShareLink();
+      document.getElementById("supabaseUrlInput").value = config.supabaseUrl || "";
+      document.getElementById("supabaseKeyInput").value = config.supabaseKey || "";
+      document.getElementById("btnToggleSync").textContent = config.syncEnabled ? "關閉同步" : "開啟同步";
+      document.getElementById("statVisits").textContent = state.totalVisits;
+      document.getElementById("statPets").textContent = state.totalPets;
+      document.getElementById("statFeeds").textContent = state.totalFeeds;
+      document.getElementById("statSleeps").textContent = state.totalSleeps;
+
+      renderMoodButtons();
+      renderBackgroundButtons();
+      renderNotes();
+      renderDiary();
+      updateDogVisual();
+    }
+
+    async function ensureRemoteRoom() {
+      const { data, error } = await client.from("pet_rooms").select("room_id,state").eq("room_id", state.roomId).maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        const payload = { ...state, updatedAt: new Date().toISOString(), updatedBy: state.currentUser || "system" };
+        const { error: insertError } = await client.from("pet_rooms").upsert({ room_id: state.roomId, state: payload });
+        if (insertError) throw insertError;
+        state = payload;
+        saveLocalRoom();
+        return;
+      }
+      state = { ...defaultState, ...(data.state || {}), roomId: state.roomId };
+      saveLocalRoom();
+      render();
+    }
+
+    async function pushStateToRemote(nextState) {
+      if (!config.syncEnabled || !client) return;
+      try {
+        isSyncing = true;
+        pushing = true;
+        setSyncStatus("同步中...");
+        const payload = { ...nextState, updatedAt: new Date().toISOString(), updatedBy: nextState.currentUser || "system" };
+        const { error } = await client.from("pet_rooms").upsert({ room_id: nextState.roomId, state: payload });
+        if (error) throw error;
+        state = payload;
+        saveLocalRoom();
+        setSyncStatus("雲端已同步");
+        render();
+      } catch (e) {
+        setSyncStatus(`同步失敗：${e.message}`);
+      } finally {
+        pushing = false;
+        isSyncing = false;
+      }
+    }
+
+    async function connectSupabase() {
+      if (!config.supabaseUrl || !config.supabaseKey || !config.syncEnabled) {
+        setSyncStatus("本機模式");
+        return;
+      }
+      try {
+        if (channel && client) {
+          await client.removeChannel(channel);
+          channel = null;
+        }
+        client = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+        await ensureRemoteRoom();
+        channel = client
+          .channel(`room-${state.roomId}`)
+          .on("postgres_changes", { event: "*", schema: "public", table: "pet_rooms", filter: `room_id=eq.${state.roomId}` }, (payload) => {
+            if (pushing) return;
+            const nextRemote = payload && payload.new && payload.new.state;
+            if (!nextRemote) return;
+            state = { ...defaultState, ...nextRemote, roomId: state.roomId };
+            saveLocalRoom();
+            setSyncStatus(`收到雲端更新：${state.updatedBy || "另一端"}`);
+            render();
+          })
+          .subscribe((status) => {
+            if (status === "SUBSCRIBED") setSyncStatus("即時同步已連線");
+          });
+      } catch (e) {
+        setSyncStatus(`連線失敗：${e.message}`);
+      }
+    }
+
+    function commitState(updater) {
+      const updated = typeof updater === "function" ? updater(state) : updater;
+      state = { ...updated, updatedAt: new Date().toISOString(), updatedBy: updated.currentUser || "system" };
+      saveLocalRoom();
+      render();
+      if (config.syncEnabled) pushStateToRemote(state);
+    }
+
+    function visitAs(user) {
+      commitState(prev => ({
+        ...prev,
+        currentUser: user,
+        meVisitedToday: user === prev.meName ? true : prev.meVisitedToday,
+        partnerVisitedToday: user === prev.partnerName ? true : prev.partnerVisitedToday,
+        totalVisits: prev.totalVisits + 1,
+        petMood: clamp(prev.petMood + 4, 0, 100),
+        petEnergy: clamp(prev.petEnergy + 2, 0, 100),
+        lastActionText: getReaction("visit", user, prev.todayMood)
+      }));
+    }
+
+    function interact(type) {
+      commitState(prev => {
+        const update = { ...prev };
+        if (type === "pet") {
+          update.petMood = clamp(prev.petMood + 10, 0, 100);
+          update.petLove = clamp(prev.petLove + 5, 0, 999);
+          update.totalPets = prev.totalPets + 1;
+        }
+        if (type === "feed") {
+          update.petHunger = clamp(prev.petHunger - 20, 0, 100);
+          update.petMood = clamp(prev.petMood + 6, 0, 100);
+          update.petLove = clamp(prev.petLove + 4, 0, 999);
+          update.totalFeeds = prev.totalFeeds + 1;
+        }
+        if (type === "sleep") {
+          update.petEnergy = clamp(prev.petEnergy + 22, 0, 100);
+          update.petMood = clamp(prev.petMood + 3, 0, 100);
+          update.totalSleeps = prev.totalSleeps + 1;
+        }
+        if (type === "dress") {
+          update.accessory = ACCESSORIES[(ACCESSORIES.indexOf(prev.accessory) + 1) % ACCESSORIES.length];
+        }
+        update.lastActionText = getReaction(type === "dress" ? "dress" : type, prev.currentUser, prev.todayMood);
+        return update;
+      });
+    }
+
+    function bindEvents() {
+      document.getElementById("btnVisitMe").onclick = () => visitAs(state.meName);
+      document.getElementById("btnVisitPartner").onclick = () => visitAs(state.partnerName);
+      document.getElementById("btnPet").onclick = () => interact("pet");
+      document.getElementById("btnFeed").onclick = () => interact("feed");
+      document.getElementById("btnSleep").onclick = () => interact("sleep");
+      document.getElementById("btnDress").onclick = () => interact("dress");
+
+      document.getElementById("btnSaveNote").onclick = () => {
+        const input = document.getElementById("noteInput");
+        const text = input.value.trim();
+        if (!text) return;
+        commitState(prev => ({
+          ...prev,
+          notes: [{ text, from: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.notes].slice(0, 12),
+          petMood: clamp(prev.petMood + 4, 0, 100),
+          petLove: clamp(prev.petLove + 3, 0, 999),
+          lastActionText: getReaction("note", prev.currentUser, prev.todayMood)
+        }));
+        input.value = "";
+      };
+
+      document.getElementById("btnSaveDiary").onclick = () => {
+        const input = document.getElementById("diaryInput");
+        const text = input.value.trim();
+        if (!text) return;
+        commitState(prev => ({
+          ...prev,
+          diary: [{ text, mood: prev.todayMood, by: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.diary].slice(0, 10),
+          lastActionText: `我記住今天的心情了：${prev.todayMood}`
+        }));
+        input.value = "";
+      };
+
+      document.getElementById("meNameInput").onchange = (e) => commitState(prev => ({ ...prev, meName: e.target.value || "你" }));
+      document.getElementById("partnerNameInput").onchange = (e) => commitState(prev => ({ ...prev, partnerName: e.target.value || "女友" }));
+      document.getElementById("petNameInput").onchange = (e) => commitState(prev => ({ ...prev, petName: e.target.value || "陪陪" }));
+      document.getElementById("anniversaryInput").onchange = (e) => commitState(prev => ({ ...prev, anniversary: e.target.value }));
+
+      document.getElementById("btnSaveNow").onclick = () => commitState(prev => ({ ...prev, lastActionText: getReaction(config.syncEnabled ? "sync" : "save", prev.currentUser, prev.todayMood) }));
+
+      document.getElementById("supabaseUrlInput").onchange = (e) => {
+        config.supabaseUrl = e.target.value.trim();
+        saveConfig();
+      };
+      document.getElementById("supabaseKeyInput").onchange = (e) => {
+        config.supabaseKey = e.target.value.trim();
+        saveConfig();
+      };
+
+      document.getElementById("btnSwitchRoom").onclick = async () => {
+        const nextRoom = safeRoomId(document.getElementById("roomInput").value);
+        const nextUrl = `${window.location.pathname}?room=${nextRoom}`;
+        window.history.replaceState({}, "", nextUrl);
+        loadLocalRoom(nextRoom);
+        applyDailyReset();
+        render();
+        if (config.syncEnabled) await connectSupabase();
+      };
+
+      document.getElementById("btnCopyLink").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(getShareLink());
+          commitState(prev => ({ ...prev, lastActionText: "連結複製好了，傳給對方就能進同一個小屋。" }));
+        } catch {
+          setSyncStatus("複製失敗，請手動複製連結");
+        }
+      };
+
+      document.getElementById("btnToggleSync").onclick = async () => {
+        config.syncEnabled = !config.syncEnabled;
+        saveConfig();
+        render();
+        if (config.syncEnabled) {
+          await connectSupabase();
+        } else {
+          if (channel && client) {
+            await client.removeChannel(channel);
+            channel = null;
+          }
+          setSyncStatus("本機模式");
+        }
+      };
+
+      document.getElementById("btnResetRoom").onclick = async () => {
+        localStorage.removeItem(getStorageKey(state.roomId));
+        const roomId = state.roomId;
+        state = { ...defaultState, roomId };
+        saveLocalRoom();
+        render();
+        if (config.syncEnabled) await pushStateToRemote(state);
+      };
+    }
+
+    function init() {
+      const params = new URLSearchParams(window.location.search);
+      const room = safeRoomId(params.get("room") || "sweet-home");
+      loadConfig();
+      loadLocalRoom(room);
+      applyDailyReset();
+      bindEvents();
+      render();
+      if (config.syncEnabled && config.supabaseUrl && config.supabaseKey) {
+        connectSupabase();
+      } else {
+        setSyncStatus("本機模式");
+      }
+      window.addEventListener("storage", (e) => {
+        if (e.key === getStorageKey(state.roomId) && e.newValue) {
+          try {
+            state = { ...defaultState, ...JSON.parse(e.newValue), roomId: state.roomId };
+            render();
+          } catch {}
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
