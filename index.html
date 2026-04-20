@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Heart, Moon, UtensilsCrossed, MessageCircle, Sparkles, CalendarHeart, Shirt, RotateCcw, Users, Smile, Cloud, Copy, Home, Save } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Heart, Moon, UtensilsCrossed, MessageCircle, Sparkles, CalendarHeart, Shirt, RotateCcw, Users, Cloud, Copy, Home, Save, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
 const STORAGE_PREFIX = "peipei-dog-room-";
+const SUPABASE_CONFIG_KEY = "peipei-supabase-config-v1";
 
 const defaultState = {
   roomId: "sweet-home",
@@ -34,6 +36,14 @@ const defaultState = {
   totalVisits: 0,
   diary: [],
   background: "暖暖房間",
+  updatedAt: null,
+  updatedBy: "system",
+};
+
+const defaultConfig = {
+  supabaseUrl: "",
+  supabaseKey: "",
+  syncEnabled: false,
 };
 
 const accessories = ["藍色領巾", "粉色蝴蝶結", "星星帽", "小披風", "草莓帽", "無配件"];
@@ -50,7 +60,7 @@ function clamp(num, min, max) {
 }
 
 function safeRoomId(v) {
-  return (v || "sweet-home").toLowerCase().replace(/[^a-z0-9-_]/g, "-").slice(0, 24) || "sweet-home";
+  return (v || "sweet-home").toLowerCase().replace(/[^a-z0-9-_]/g, "-").slice(0, 36) || "sweet-home";
 }
 
 function getStorageKey(roomId) {
@@ -83,6 +93,7 @@ function getReaction(action, currentUser, todayMood) {
     dress: [`新造型耶，我要炫耀一下。`, `這個配件今天很適合我。`],
     mood: moodMap[todayMood] || moodMap["普通"],
     save: [`我有把現在的樣子記住囉。`, `小屋已經好好存起來了。`],
+    sync: [`我已經連上雲端了，可以一起生活囉。`, `同步開啟，我會記得你們兩個的互動。`],
   };
 
   const arr = actionMap[action] || moodMap["普通"];
@@ -145,29 +156,10 @@ function CuteDog({ mood, accessory, petName, background }) {
           <circle cx="175" cy="244" r="5" fill="#c9876b" />
 
           {accessory === "藍色領巾" && <path d="M116 188 Q160 205 204 188 L194 210 Q160 224 126 210 Z" fill="#7dc8ff" />}
-          {accessory === "粉色蝴蝶結" && (
-            <>
-              <ellipse cx="138" cy="74" rx="18" ry="12" fill="#ff9fca" />
-              <ellipse cx="164" cy="74" rx="18" ry="12" fill="#ff9fca" />
-              <circle cx="151" cy="74" r="6" fill="#ff79b6" />
-            </>
-          )}
-          {accessory === "星星帽" && (
-            <>
-              <path d="M132 54 H188 L176 80 H144 Z" fill="#5c6cff" />
-              <circle cx="160" cy="50" r="10" fill="#ffd75e" />
-            </>
-          )}
+          {accessory === "粉色蝴蝶結" && (<><ellipse cx="138" cy="74" rx="18" ry="12" fill="#ff9fca" /><ellipse cx="164" cy="74" rx="18" ry="12" fill="#ff9fca" /><circle cx="151" cy="74" r="6" fill="#ff79b6" /></>)}
+          {accessory === "星星帽" && (<><path d="M132 54 H188 L176 80 H144 Z" fill="#5c6cff" /><circle cx="160" cy="50" r="10" fill="#ffd75e" /></>)}
           {accessory === "小披風" && <path d="M111 186 Q160 238 209 186 L220 224 Q160 268 100 224 Z" fill="#ff7d8f" opacity="0.9" />}
-          {accessory === "草莓帽" && (
-            <>
-              <path d="M132 60 Q160 36 188 60 Q180 86 160 90 Q140 86 132 60 Z" fill="#ff5e74" />
-              <path d="M150 49 Q160 38 170 49" stroke="#61a84a" strokeWidth="5" strokeLinecap="round" fill="none" />
-              <circle cx="148" cy="66" r="2" fill="#fff4c2" />
-              <circle cx="164" cy="72" r="2" fill="#fff4c2" />
-              <circle cx="173" cy="62" r="2" fill="#fff4c2" />
-            </>
-          )}
+          {accessory === "草莓帽" && (<><path d="M132 60 Q160 36 188 60 Q180 86 160 90 Q140 86 132 60 Z" fill="#ff5e74" /><path d="M150 49 Q160 38 170 49" stroke="#61a84a" strokeWidth="5" strokeLinecap="round" fill="none" /><circle cx="148" cy="66" r="2" fill="#fff4c2" /><circle cx="164" cy="72" r="2" fill="#fff4c2" /><circle cx="173" cy="62" r="2" fill="#fff4c2" /></>)}
         </svg>
         <div className="mt-3 text-2xl font-bold">{petName}</div>
         <div className="mt-1 text-sm text-slate-500">今天看起來好想被摸摸</div>
@@ -178,86 +170,185 @@ function CuteDog({ mood, accessory, petName, background }) {
 
 export default function PeiPeiDogApp() {
   const [state, setState] = useState(defaultState);
+  const [config, setConfig] = useState(defaultConfig);
   const [noteText, setNoteText] = useState("");
   const [diaryText, setDiaryText] = useState("");
   const [roomInput, setRoomInput] = useState("sweet-home");
+  const [syncStatus, setSyncStatus] = useState("本機模式");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const supabaseRef = useRef(null);
+  const channelRef = useRef(null);
+  const pushingRef = useRef(false);
 
-  function saveToLocal(nextState) {
+  function saveLocalRoom(nextState) {
     localStorage.setItem(getStorageKey(nextState.roomId), JSON.stringify(nextState));
   }
 
-  function loadFromRoom(roomId) {
+  function loadLocalRoom(roomId) {
     const raw = localStorage.getItem(getStorageKey(roomId));
     if (!raw) {
       const fresh = { ...defaultState, roomId: safeRoomId(roomId) };
       setState(fresh);
       setRoomInput(safeRoomId(roomId));
-      saveToLocal(fresh);
-      return;
+      saveLocalRoom(fresh);
+      return fresh;
     }
     try {
       const parsed = JSON.parse(raw);
       const merged = { ...defaultState, ...parsed, roomId: safeRoomId(roomId) };
       setState(merged);
       setRoomInput(safeRoomId(roomId));
+      return merged;
     } catch {
       const fresh = { ...defaultState, roomId: safeRoomId(roomId) };
       setState(fresh);
       setRoomInput(safeRoomId(roomId));
-      saveToLocal(fresh);
+      saveLocalRoom(fresh);
+      return fresh;
+    }
+  }
+
+  function saveConfig(nextConfig) {
+    localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(nextConfig));
+    setConfig(nextConfig);
+  }
+
+  async function ensureRemoteRoom(client, currentState) {
+    const { data, error } = await client
+      .from("pet_rooms")
+      .select("room_id,state")
+      .eq("room_id", currentState.roomId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      const payload = { ...currentState, updatedAt: new Date().toISOString(), updatedBy: currentState.currentUser || "system" };
+      const { error: insertError } = await client.from("pet_rooms").upsert({ room_id: currentState.roomId, state: payload });
+      if (insertError) throw insertError;
+      return payload;
+    }
+
+    const remoteState = { ...defaultState, ...(data.state || {}), roomId: currentState.roomId };
+    setState(remoteState);
+    saveLocalRoom(remoteState);
+    return remoteState;
+  }
+
+  async function pushStateToRemote(nextState) {
+    if (!config.syncEnabled || !supabaseRef.current) return;
+    try {
+      setIsSyncing(true);
+      pushingRef.current = true;
+      const payload = { ...nextState, updatedAt: new Date().toISOString(), updatedBy: nextState.currentUser || "system" };
+      const { error } = await supabaseRef.current.from("pet_rooms").upsert({ room_id: nextState.roomId, state: payload });
+      if (error) throw error;
+      saveLocalRoom(payload);
+      setSyncStatus("雲端已同步");
+    } catch (e) {
+      setSyncStatus(`同步失敗：${e.message}`);
+    } finally {
+      pushingRef.current = false;
+      setIsSyncing(false);
+    }
+  }
+
+  async function connectSupabase(nextConfig = config, currentState = state) {
+    if (!nextConfig.supabaseUrl || !nextConfig.supabaseKey || !nextConfig.syncEnabled) {
+      setSyncStatus("本機模式");
+      return;
+    }
+
+    try {
+      if (channelRef.current && supabaseRef.current) {
+        supabaseRef.current.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const client = createClient(nextConfig.supabaseUrl, nextConfig.supabaseKey);
+      supabaseRef.current = client;
+      await ensureRemoteRoom(client, currentState);
+
+      const channel = client
+        .channel(`room-${currentState.roomId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "pet_rooms", filter: `room_id=eq.${currentState.roomId}` },
+          (payload) => {
+            if (pushingRef.current) return;
+            const nextRemote = payload?.new?.state;
+            if (!nextRemote) return;
+            const merged = { ...defaultState, ...nextRemote, roomId: currentState.roomId };
+            setState(merged);
+            saveLocalRoom(merged);
+            setSyncStatus(`收到雲端更新：${merged.updatedBy || "另一端"}`);
+          }
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") setSyncStatus("即時同步已連線");
+        });
+
+      channelRef.current = channel;
+      setSyncStatus("即時同步已連線");
+    } catch (e) {
+      setSyncStatus(`連線失敗：${e.message}`);
     }
   }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const room = safeRoomId(params.get("room") || "sweet-home");
-    loadFromRoom(room);
-  }, []);
+    const initial = loadLocalRoom(room);
 
-  useEffect(() => {
-    if (!state.roomId) return;
-    saveToLocal(state);
-  }, [state]);
-
-  useEffect(() => {
-    function onStorage(e) {
-      if (e.key === getStorageKey(state.roomId) && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          setState((prev) => ({ ...prev, ...parsed }));
-        } catch {}
+    const rawConfig = localStorage.getItem(SUPABASE_CONFIG_KEY);
+    if (rawConfig) {
+      try {
+        const parsed = JSON.parse(rawConfig);
+        setConfig({ ...defaultConfig, ...parsed });
+      } catch {
+        setConfig(defaultConfig);
       }
     }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [state.roomId]);
 
-  useEffect(() => {
     const today = todayStr();
     setState((prev) => {
-      if (!prev.lastVisitDate) {
-        return { ...prev, lastVisitDate: today };
-      }
-      if (prev.lastVisitDate !== today) {
+      const base = initial || prev;
+      if (!base.lastVisitDate) return { ...base, lastVisitDate: today };
+      if (base.lastVisitDate !== today) {
         const yesterdayLike = new Date();
         yesterdayLike.setDate(yesterdayLike.getDate() - 1);
         const y = `${yesterdayLike.getFullYear()}-${String(yesterdayLike.getMonth() + 1).padStart(2, "0")}-${String(yesterdayLike.getDate()).padStart(2, "0")}`;
-        const nextStreak = prev.lastVisitDate === y ? prev.streak + 1 : 1;
+        const nextStreak = base.lastVisitDate === y ? base.streak + 1 : 1;
         return {
-          ...prev,
+          ...base,
           meVisitedToday: false,
           partnerVisitedToday: false,
           lastVisitDate: today,
           streak: nextStreak,
-          petMood: clamp(prev.petMood - 8, 0, 100),
-          petEnergy: clamp(prev.petEnergy - 6, 0, 100),
-          petHunger: clamp(prev.petHunger + 10, 0, 100),
+          petMood: clamp(base.petMood - 8, 0, 100),
+          petEnergy: clamp(base.petEnergy - 6, 0, 100),
+          petHunger: clamp(base.petHunger + 10, 0, 100),
           lastActionText: "新的一天開始了，我在等你們。",
         };
       }
-      return prev;
+      return base;
     });
   }, []);
+
+  useEffect(() => {
+    saveLocalRoom(state);
+  }, [state]);
+
+  useEffect(() => {
+    if (config.syncEnabled && config.supabaseUrl && config.supabaseKey && state.roomId) {
+      connectSupabase(config, state);
+    }
+    return () => {
+      if (channelRef.current && supabaseRef.current) {
+        supabaseRef.current.removeChannel(channelRef.current);
+      }
+    };
+  }, [config.syncEnabled, config.supabaseUrl, config.supabaseKey, state.roomId]);
 
   const anniversaryText = useMemo(() => {
     if (!state.anniversary) return "尚未設定";
@@ -270,8 +361,17 @@ export default function PeiPeiDogApp() {
 
   const shareLink = useMemo(() => `${window.location.origin}${window.location.pathname}?room=${safeRoomId(state.roomId)}`, [state.roomId]);
 
+  function commitState(updater) {
+    setState((prev) => {
+      const updated = typeof updater === "function" ? updater(prev) : updater;
+      const finalState = { ...updated, updatedAt: new Date().toISOString(), updatedBy: updated.currentUser || "system" };
+      if (config.syncEnabled) pushStateToRemote(finalState);
+      return finalState;
+    });
+  }
+
   function visitAs(user) {
-    setState((prev) => ({
+    commitState((prev) => ({
       ...prev,
       currentUser: user,
       meVisitedToday: user === prev.meName ? true : prev.meVisitedToday,
@@ -284,7 +384,7 @@ export default function PeiPeiDogApp() {
   }
 
   function interact(type) {
-    setState((prev) => {
+    commitState((prev) => {
       let update = { ...prev };
       if (type === "pet") {
         update.petMood = clamp(prev.petMood + 10, 0, 100);
@@ -309,7 +409,7 @@ export default function PeiPeiDogApp() {
 
   function saveNote() {
     if (!noteText.trim()) return;
-    setState((prev) => ({
+    commitState((prev) => ({
       ...prev,
       notes: [{ text: noteText.trim(), from: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.notes].slice(0, 12),
       petMood: clamp(prev.petMood + 4, 0, 100),
@@ -321,7 +421,7 @@ export default function PeiPeiDogApp() {
 
   function saveDiary() {
     if (!diaryText.trim()) return;
-    setState((prev) => ({
+    commitState((prev) => ({
       ...prev,
       diary: [{ text: diaryText.trim(), mood: prev.todayMood, by: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.diary].slice(0, 10),
       lastActionText: `我記住今天的心情了：${prev.todayMood}`,
@@ -330,22 +430,23 @@ export default function PeiPeiDogApp() {
   }
 
   function saveNow() {
-    setState((prev) => ({ ...prev, lastActionText: getReaction("save", prev.currentUser, prev.todayMood) }));
+    commitState((prev) => ({ ...prev, lastActionText: getReaction(config.syncEnabled ? "sync" : "save", prev.currentUser, prev.todayMood) }));
   }
 
   function switchRoom() {
     const nextRoom = safeRoomId(roomInput);
     const nextUrl = `${window.location.pathname}?room=${nextRoom}`;
     window.history.replaceState({}, "", nextUrl);
-    loadFromRoom(nextRoom);
+    const loaded = loadLocalRoom(nextRoom);
+    if (config.syncEnabled) connectSupabase(config, loaded);
   }
 
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(shareLink);
-      setState((prev) => ({ ...prev, lastActionText: "連結複製好了，傳給對方就能進同一個小屋。" }));
+      commitState((prev) => ({ ...prev, lastActionText: "連結複製好了，傳給對方就能進同一個小屋。" }));
     } catch {
-      setState((prev) => ({ ...prev, lastActionText: "複製失敗了，但你可以手動複製上面的房間連結。" }));
+      commitState((prev) => ({ ...prev, lastActionText: "複製失敗了，但你可以手動複製上面的房間連結。" }));
     }
   }
 
@@ -355,6 +456,7 @@ export default function PeiPeiDogApp() {
     setState(fresh);
     setNoteText("");
     setDiaryText("");
+    if (config.syncEnabled) pushStateToRemote(fresh);
   }
 
   return (
@@ -368,11 +470,14 @@ export default function PeiPeiDogApp() {
                   <CardTitle className="text-2xl md:text-3xl flex items-center gap-2">
                     <Home className="w-6 h-6" /> {state.petName} 的情侶小屋
                   </CardTitle>
-                  <p className="text-sm text-slate-500 mt-1">名字都可以改，也能用同一個房間代碼共享。</p>
+                  <p className="text-sm text-slate-500 mt-1">這版可以接 Supabase 做真正即時同步。</p>
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap items-center">
                   <Badge className="rounded-full px-3 py-1 text-sm">連續天數 {state.streak}</Badge>
                   <Badge variant="secondary" className="rounded-full px-3 py-1 text-sm">愛心 {state.petLove}</Badge>
+                  <Badge variant="outline" className="rounded-full px-3 py-1 text-sm flex items-center gap-1">
+                    {config.syncEnabled ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />} {syncStatus}
+                  </Badge>
                 </div>
               </div>
             </CardHeader>
@@ -381,7 +486,7 @@ export default function PeiPeiDogApp() {
                 <div className="grid gap-4">
                   <CuteDog mood={state.petMood} accessory={state.accessory} petName={state.petName} background={state.background} />
                   <div className="rounded-3xl bg-rose-50 p-4 text-sm md:text-base">
-                    <p className="font-medium flex items-center gap-2"><Smile className="w-4 h-4" /> {state.petName} 說：</p>
+                    <p className="font-medium">{state.petName} 說：</p>
                     <p className="mt-2">{state.lastActionText}</p>
                   </div>
                 </div>
@@ -416,7 +521,7 @@ export default function PeiPeiDogApp() {
                     <Button onClick={() => interact("pet")} className="rounded-2xl h-14 text-base"><Heart className="w-4 h-4 mr-2" />摸摸</Button>
                     <Button onClick={() => interact("feed")} variant="secondary" className="rounded-2xl h-14 text-base"><UtensilsCrossed className="w-4 h-4 mr-2" />餵食</Button>
                     <Button onClick={() => interact("sleep")} variant="outline" className="rounded-2xl h-14 text-base"><Moon className="w-4 h-4 mr-2" />睡覺</Button>
-                    <Button onClick={() => setState((p) => ({ ...p, accessory: accessories[(accessories.indexOf(p.accessory) + 1) % accessories.length], lastActionText: getReaction("dress", p.currentUser, p.todayMood) }))} variant="outline" className="rounded-2xl h-14 text-base"><Shirt className="w-4 h-4 mr-2" />換裝</Button>
+                    <Button onClick={() => commitState((p) => ({ ...p, accessory: accessories[(accessories.indexOf(p.accessory) + 1) % accessories.length], lastActionText: getReaction("dress", p.currentUser, p.todayMood) }))} variant="outline" className="rounded-2xl h-14 text-base"><Shirt className="w-4 h-4 mr-2" />換裝</Button>
                   </div>
                 </div>
               </div>
@@ -452,7 +557,7 @@ export default function PeiPeiDogApp() {
                   <div className="text-sm mb-2">今天的心情</div>
                   <div className="flex flex-wrap gap-2">
                     {moodOptions.map((m) => (
-                      <Button key={m} variant={state.todayMood === m ? "default" : "secondary"} className="rounded-full" onClick={() => setState((prev) => ({ ...prev, todayMood: m, lastActionText: getReaction("mood", prev.currentUser, m) }))}>{m}</Button>
+                      <Button key={m} variant={state.todayMood === m ? "default" : "secondary"} className="rounded-full" onClick={() => commitState((prev) => ({ ...prev, todayMood: m, lastActionText: getReaction("mood", prev.currentUser, m) }))}>{m}</Button>
                     ))}
                   </div>
                 </div>
@@ -483,27 +588,27 @@ export default function PeiPeiDogApp() {
             <CardContent className="grid gap-3">
               <div>
                 <div className="text-sm mb-2">你的名字</div>
-                <Input value={state.meName} onChange={(e) => setState((prev) => ({ ...prev, meName: e.target.value || "你" }))} className="rounded-2xl" />
+                <Input value={state.meName} onChange={(e) => commitState((prev) => ({ ...prev, meName: e.target.value || "你" }))} className="rounded-2xl" />
               </div>
               <div>
                 <div className="text-sm mb-2">對方名字</div>
-                <Input value={state.partnerName} onChange={(e) => setState((prev) => ({ ...prev, partnerName: e.target.value || "女友" }))} className="rounded-2xl" />
+                <Input value={state.partnerName} onChange={(e) => commitState((prev) => ({ ...prev, partnerName: e.target.value || "女友" }))} className="rounded-2xl" />
               </div>
               <div>
                 <div className="text-sm mb-2">狗狗名字</div>
-                <Input value={state.petName} onChange={(e) => setState((prev) => ({ ...prev, petName: e.target.value || "陪陪" }))} className="rounded-2xl" />
+                <Input value={state.petName} onChange={(e) => commitState((prev) => ({ ...prev, petName: e.target.value || "陪陪" }))} className="rounded-2xl" />
               </div>
               <div>
                 <div className="text-sm mb-2">房間背景</div>
                 <div className="flex flex-wrap gap-2">
                   {backgrounds.map((b) => (
-                    <Button key={b} variant={state.background === b ? "default" : "secondary"} className="rounded-full" onClick={() => setState((prev) => ({ ...prev, background: b }))}>{b}</Button>
+                    <Button key={b} variant={state.background === b ? "default" : "secondary"} className="rounded-full" onClick={() => commitState((prev) => ({ ...prev, background: b }))}>{b}</Button>
                   ))}
                 </div>
               </div>
               <div>
                 <div className="text-sm mb-2">紀念日</div>
-                <Input type="date" value={state.anniversary} onChange={(e) => setState((prev) => ({ ...prev, anniversary: e.target.value }))} className="rounded-2xl" />
+                <Input type="date" value={state.anniversary} onChange={(e) => commitState((prev) => ({ ...prev, anniversary: e.target.value }))} className="rounded-2xl" />
                 <div className="text-sm text-slate-500 mt-2">{anniversaryText}</div>
               </div>
               <Button onClick={saveNow} className="rounded-2xl"><Save className="w-4 h-4 mr-2" />儲存現在的小屋</Button>
@@ -512,9 +617,17 @@ export default function PeiPeiDogApp() {
 
           <Card className="rounded-3xl shadow-sm border-0">
             <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2"><Cloud className="w-5 h-5" /> 情侶共用同步</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Cloud className="w-5 h-5" /> Supabase 即時同步</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
+              <div>
+                <div className="text-sm mb-2">Supabase URL</div>
+                <Input value={config.supabaseUrl} onChange={(e) => saveConfig({ ...config, supabaseUrl: e.target.value })} placeholder="https://xxxx.supabase.co" className="rounded-2xl" />
+              </div>
+              <div>
+                <div className="text-sm mb-2">Publishable / anon key</div>
+                <Input value={config.supabaseKey} onChange={(e) => saveConfig({ ...config, supabaseKey: e.target.value })} placeholder="eyJ..." className="rounded-2xl" />
+              </div>
               <div>
                 <div className="text-sm mb-2">房間代碼</div>
                 <div className="flex gap-2">
@@ -522,17 +635,17 @@ export default function PeiPeiDogApp() {
                   <Button onClick={switchRoom} className="rounded-2xl">進入</Button>
                 </div>
               </div>
-              <div className="rounded-2xl bg-sky-50 p-3">
-                <div className="font-medium">共用方式</div>
-                <div className="mt-1 text-slate-600">把同一個房間代碼或連結傳給對方，就能進同一個小屋。</div>
-              </div>
               <div>
                 <div className="text-sm mb-2">房間連結</div>
                 <Input value={shareLink} readOnly className="rounded-2xl" />
               </div>
-              <Button variant="secondary" onClick={copyLink} className="rounded-2xl"><Copy className="w-4 h-4 mr-2" />複製連結</Button>
-              <div className="rounded-2xl bg-amber-50 p-3 text-slate-700">
-                目前這版是「同房間結構 + 同裝置即時更新 + 可分享房間連結」。真正跨兩支手機自動同步還需要接上雲端資料庫，例如 Supabase 或 Firebase。
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={copyLink} className="rounded-2xl flex-1"><Copy className="w-4 h-4 mr-2" />複製連結</Button>
+                <Button onClick={() => { const next = { ...config, syncEnabled: !config.syncEnabled }; saveConfig(next); if (!config.syncEnabled) connectSupabase(next, state); }} className="rounded-2xl flex-1">{config.syncEnabled ? "關閉同步" : "開啟同步"}</Button>
+              </div>
+              <div className="rounded-2xl bg-sky-50 p-3">
+                <div className="font-medium">同步狀態</div>
+                <div className="mt-1 text-slate-600">{isSyncing ? "同步中..." : syncStatus}</div>
               </div>
             </CardContent>
           </Card>
