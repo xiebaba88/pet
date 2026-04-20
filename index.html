@@ -1,0 +1,561 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Heart, Moon, UtensilsCrossed, MessageCircle, Sparkles, CalendarHeart, Shirt, RotateCcw, Users, Smile, Cloud, Copy, Home, Save } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+
+const STORAGE_PREFIX = "peipei-dog-room-";
+
+const defaultState = {
+  roomId: "sweet-home",
+  currentUser: "你",
+  petName: "陪陪",
+  petMood: 72,
+  petEnergy: 68,
+  petHunger: 45,
+  petLove: 18,
+  lastActionText: "汪～我在，今天也一起度過吧。",
+  meVisitedToday: false,
+  partnerVisitedToday: false,
+  lastVisitDate: "",
+  meName: "你",
+  partnerName: "女友",
+  notes: [],
+  todayMood: "普通",
+  anniversary: "",
+  accessory: "藍色領巾",
+  streak: 0,
+  totalPets: 0,
+  totalFeeds: 0,
+  totalSleeps: 0,
+  totalVisits: 0,
+  diary: [],
+  background: "暖暖房間",
+};
+
+const accessories = ["藍色領巾", "粉色蝴蝶結", "星星帽", "小披風", "草莓帽", "無配件"];
+const moodOptions = ["開心", "普通", "累了", "煩躁", "想抱抱"];
+const backgrounds = ["暖暖房間", "窗邊午後", "星空小窩"];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function clamp(num, min, max) {
+  return Math.max(min, Math.min(max, num));
+}
+
+function safeRoomId(v) {
+  return (v || "sweet-home").toLowerCase().replace(/[^a-z0-9-_]/g, "-").slice(0, 24) || "sweet-home";
+}
+
+function getStorageKey(roomId) {
+  return `${STORAGE_PREFIX}${safeRoomId(roomId)}`;
+}
+
+function getStatusText(state) {
+  if (state.meVisitedToday && state.partnerVisitedToday) return "今天你們都有來，狗狗超滿足。";
+  if (state.meVisitedToday) return `今天 ${state.meName} 有來陪牠。`;
+  if (state.partnerVisitedToday) return `今天 ${state.partnerName} 有來陪牠。`;
+  return "今天還沒有人來找牠。";
+}
+
+function getReaction(action, currentUser, todayMood) {
+  const userLabel = currentUser || "你";
+  const moodMap = {
+    開心: [`汪！${userLabel} 一來我就更開心了。`, `今天感覺亮亮的，想和 ${userLabel} 多待一下。`],
+    普通: [`我在這裡慢慢陪著 ${userLabel}。`, `${userLabel} 來了就很好。`],
+    累了: [`辛苦了，${userLabel} 先坐一下，我陪你。`, `今天很累的話，就靠著我休息一下。`],
+    煩躁: [`沒關係，今天可以不用那麼厲害。`, `把煩的事先放旁邊，先摸摸我。`],
+    想抱抱: [`汪…給你一個小小抱抱。`, `今天是抱抱模式，我會黏著 ${userLabel}。`],
+  };
+
+  const actionMap = {
+    pet: [`${userLabel} 摸摸我，我尾巴在搖。`, `再摸一下，我喜歡。`],
+    feed: [`這個好吃！我會記得 ${userLabel}。`, `吃飽就比較有力氣陪你們了。`],
+    sleep: [`我要先睡一下，醒來再陪 ${userLabel}。`, `晚安模式啟動，今天也辛苦了。`],
+    visit: moodMap[todayMood] || moodMap["普通"],
+    note: [`我會幫你把心意收好。`, `這句話暖暖的，我幫你保存了。`],
+    dress: [`新造型耶，我要炫耀一下。`, `這個配件今天很適合我。`],
+    mood: moodMap[todayMood] || moodMap["普通"],
+    save: [`我有把現在的樣子記住囉。`, `小屋已經好好存起來了。`],
+  };
+
+  const arr = actionMap[action] || moodMap["普通"];
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function CuteDog({ mood, accessory, petName, background }) {
+  const blush = mood >= 70 ? 1 : 0.55;
+  const eyeY = mood < 35 ? 104 : 100;
+  const mouthPath = mood >= 70 ? "M150 133 Q160 143 170 133" : mood >= 45 ? "M150 135 Q160 139 170 135" : "M150 141 Q160 133 170 141";
+  const bgClass =
+    background === "窗邊午後"
+      ? "from-amber-100 via-orange-50 to-sky-100"
+      : background === "星空小窩"
+      ? "from-indigo-200 via-violet-100 to-pink-100"
+      : "from-rose-100 via-amber-50 to-sky-50";
+
+  return (
+    <div className={`relative rounded-[34px] bg-gradient-to-b ${bgClass} p-6 min-h-[420px] overflow-hidden`}>
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-white/45 backdrop-blur-[1px]" />
+      {background === "窗邊午後" && (
+        <>
+          <div className="absolute right-6 top-6 w-24 h-24 rounded-2xl border-4 border-white/70 bg-sky-100/80" />
+          <div className="absolute right-[5.5rem] top-6 w-1 h-24 bg-white/80" />
+          <div className="absolute right-6 top-[4.4rem] w-24 h-1 bg-white/80" />
+        </>
+      )}
+      {background === "星空小窩" && (
+        <>
+          <div className="absolute left-8 top-8 text-xl">✨</div>
+          <div className="absolute right-10 top-12 text-lg">⭐</div>
+          <div className="absolute left-16 top-20 text-sm">✨</div>
+        </>
+      )}
+
+      <div className="relative flex flex-col items-center justify-center pt-8">
+        <svg viewBox="0 0 320 320" className="w-[260px] h-[260px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.12)]">
+          <ellipse cx="160" cy="278" rx="78" ry="18" fill="rgba(0,0,0,0.08)" />
+          <ellipse cx="99" cy="90" rx="34" ry="54" fill="#d9b07b" transform="rotate(-26 99 90)" />
+          <ellipse cx="221" cy="90" rx="34" ry="54" fill="#d9b07b" transform="rotate(26 221 90)" />
+          <ellipse cx="103" cy="98" rx="19" ry="34" fill="#f3d7b2" transform="rotate(-26 103 98)" />
+          <ellipse cx="217" cy="98" rx="19" ry="34" fill="#f3d7b2" transform="rotate(26 217 98)" />
+          <ellipse cx="160" cy="154" rx="90" ry="84" fill="#f3c98f" />
+          <ellipse cx="160" cy="168" rx="58" ry="48" fill="#fff8ee" />
+          <ellipse cx="160" cy="124" rx="16" ry="12" fill="#51362b" />
+          <circle cx="126" cy={eyeY} r="7" fill="#3a2922" />
+          <circle cx="194" cy={eyeY} r="7" fill="#3a2922" />
+          <circle cx="123.5" cy={eyeY - 2} r="2" fill="white" />
+          <circle cx="191.5" cy={eyeY - 2} r="2" fill="white" />
+          <path d={mouthPath} stroke="#8a5b4a" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <ellipse cx="120" cy="126" rx="12" ry="8" fill={`rgba(255, 156, 180, ${0.18 * blush})`} />
+          <ellipse cx="200" cy="126" rx="12" ry="8" fill={`rgba(255, 156, 180, ${0.18 * blush})`} />
+          <ellipse cx="135" cy="226" rx="28" ry="18" fill="#fff8ee" />
+          <ellipse cx="185" cy="226" rx="28" ry="18" fill="#fff8ee" />
+          <ellipse cx="160" cy="216" rx="72" ry="54" fill="#f3c98f" />
+          <ellipse cx="160" cy="224" rx="46" ry="30" fill="#fff8ee" />
+          <circle cx="122" cy="224" r="5" fill="#c9876b" />
+          <circle cx="198" cy="224" r="5" fill="#c9876b" />
+          <circle cx="145" cy="244" r="5" fill="#c9876b" />
+          <circle cx="175" cy="244" r="5" fill="#c9876b" />
+
+          {accessory === "藍色領巾" && <path d="M116 188 Q160 205 204 188 L194 210 Q160 224 126 210 Z" fill="#7dc8ff" />}
+          {accessory === "粉色蝴蝶結" && (
+            <>
+              <ellipse cx="138" cy="74" rx="18" ry="12" fill="#ff9fca" />
+              <ellipse cx="164" cy="74" rx="18" ry="12" fill="#ff9fca" />
+              <circle cx="151" cy="74" r="6" fill="#ff79b6" />
+            </>
+          )}
+          {accessory === "星星帽" && (
+            <>
+              <path d="M132 54 H188 L176 80 H144 Z" fill="#5c6cff" />
+              <circle cx="160" cy="50" r="10" fill="#ffd75e" />
+            </>
+          )}
+          {accessory === "小披風" && <path d="M111 186 Q160 238 209 186 L220 224 Q160 268 100 224 Z" fill="#ff7d8f" opacity="0.9" />}
+          {accessory === "草莓帽" && (
+            <>
+              <path d="M132 60 Q160 36 188 60 Q180 86 160 90 Q140 86 132 60 Z" fill="#ff5e74" />
+              <path d="M150 49 Q160 38 170 49" stroke="#61a84a" strokeWidth="5" strokeLinecap="round" fill="none" />
+              <circle cx="148" cy="66" r="2" fill="#fff4c2" />
+              <circle cx="164" cy="72" r="2" fill="#fff4c2" />
+              <circle cx="173" cy="62" r="2" fill="#fff4c2" />
+            </>
+          )}
+        </svg>
+        <div className="mt-3 text-2xl font-bold">{petName}</div>
+        <div className="mt-1 text-sm text-slate-500">今天看起來好想被摸摸</div>
+      </div>
+    </div>
+  );
+}
+
+export default function PeiPeiDogApp() {
+  const [state, setState] = useState(defaultState);
+  const [noteText, setNoteText] = useState("");
+  const [diaryText, setDiaryText] = useState("");
+  const [roomInput, setRoomInput] = useState("sweet-home");
+
+  function saveToLocal(nextState) {
+    localStorage.setItem(getStorageKey(nextState.roomId), JSON.stringify(nextState));
+  }
+
+  function loadFromRoom(roomId) {
+    const raw = localStorage.getItem(getStorageKey(roomId));
+    if (!raw) {
+      const fresh = { ...defaultState, roomId: safeRoomId(roomId) };
+      setState(fresh);
+      setRoomInput(safeRoomId(roomId));
+      saveToLocal(fresh);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      const merged = { ...defaultState, ...parsed, roomId: safeRoomId(roomId) };
+      setState(merged);
+      setRoomInput(safeRoomId(roomId));
+    } catch {
+      const fresh = { ...defaultState, roomId: safeRoomId(roomId) };
+      setState(fresh);
+      setRoomInput(safeRoomId(roomId));
+      saveToLocal(fresh);
+    }
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const room = safeRoomId(params.get("room") || "sweet-home");
+    loadFromRoom(room);
+  }, []);
+
+  useEffect(() => {
+    if (!state.roomId) return;
+    saveToLocal(state);
+  }, [state]);
+
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key === getStorageKey(state.roomId) && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setState((prev) => ({ ...prev, ...parsed }));
+        } catch {}
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [state.roomId]);
+
+  useEffect(() => {
+    const today = todayStr();
+    setState((prev) => {
+      if (!prev.lastVisitDate) {
+        return { ...prev, lastVisitDate: today };
+      }
+      if (prev.lastVisitDate !== today) {
+        const yesterdayLike = new Date();
+        yesterdayLike.setDate(yesterdayLike.getDate() - 1);
+        const y = `${yesterdayLike.getFullYear()}-${String(yesterdayLike.getMonth() + 1).padStart(2, "0")}-${String(yesterdayLike.getDate()).padStart(2, "0")}`;
+        const nextStreak = prev.lastVisitDate === y ? prev.streak + 1 : 1;
+        return {
+          ...prev,
+          meVisitedToday: false,
+          partnerVisitedToday: false,
+          lastVisitDate: today,
+          streak: nextStreak,
+          petMood: clamp(prev.petMood - 8, 0, 100),
+          petEnergy: clamp(prev.petEnergy - 6, 0, 100),
+          petHunger: clamp(prev.petHunger + 10, 0, 100),
+          lastActionText: "新的一天開始了，我在等你們。",
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  const anniversaryText = useMemo(() => {
+    if (!state.anniversary) return "尚未設定";
+    const today = new Date();
+    const ann = new Date(state.anniversary);
+    if (Number.isNaN(ann.getTime())) return "尚未設定";
+    const diff = Math.floor((today - ann) / (1000 * 60 * 60 * 24));
+    return `已經一起 ${diff >= 0 ? diff : 0} 天`;
+  }, [state.anniversary]);
+
+  const shareLink = useMemo(() => `${window.location.origin}${window.location.pathname}?room=${safeRoomId(state.roomId)}`, [state.roomId]);
+
+  function visitAs(user) {
+    setState((prev) => ({
+      ...prev,
+      currentUser: user,
+      meVisitedToday: user === prev.meName ? true : prev.meVisitedToday,
+      partnerVisitedToday: user === prev.partnerName ? true : prev.partnerVisitedToday,
+      totalVisits: prev.totalVisits + 1,
+      petMood: clamp(prev.petMood + 4, 0, 100),
+      petEnergy: clamp(prev.petEnergy + 2, 0, 100),
+      lastActionText: getReaction("visit", user, prev.todayMood),
+    }));
+  }
+
+  function interact(type) {
+    setState((prev) => {
+      let update = { ...prev };
+      if (type === "pet") {
+        update.petMood = clamp(prev.petMood + 10, 0, 100);
+        update.petLove = clamp(prev.petLove + 5, 0, 999);
+        update.totalPets = prev.totalPets + 1;
+      }
+      if (type === "feed") {
+        update.petHunger = clamp(prev.petHunger - 20, 0, 100);
+        update.petMood = clamp(prev.petMood + 6, 0, 100);
+        update.petLove = clamp(prev.petLove + 4, 0, 999);
+        update.totalFeeds = prev.totalFeeds + 1;
+      }
+      if (type === "sleep") {
+        update.petEnergy = clamp(prev.petEnergy + 22, 0, 100);
+        update.petMood = clamp(prev.petMood + 3, 0, 100);
+        update.totalSleeps = prev.totalSleeps + 1;
+      }
+      update.lastActionText = getReaction(type, prev.currentUser, prev.todayMood);
+      return update;
+    });
+  }
+
+  function saveNote() {
+    if (!noteText.trim()) return;
+    setState((prev) => ({
+      ...prev,
+      notes: [{ text: noteText.trim(), from: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.notes].slice(0, 12),
+      petMood: clamp(prev.petMood + 4, 0, 100),
+      petLove: clamp(prev.petLove + 3, 0, 999),
+      lastActionText: getReaction("note", prev.currentUser, prev.todayMood),
+    }));
+    setNoteText("");
+  }
+
+  function saveDiary() {
+    if (!diaryText.trim()) return;
+    setState((prev) => ({
+      ...prev,
+      diary: [{ text: diaryText.trim(), mood: prev.todayMood, by: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.diary].slice(0, 10),
+      lastActionText: `我記住今天的心情了：${prev.todayMood}`,
+    }));
+    setDiaryText("");
+  }
+
+  function saveNow() {
+    setState((prev) => ({ ...prev, lastActionText: getReaction("save", prev.currentUser, prev.todayMood) }));
+  }
+
+  function switchRoom() {
+    const nextRoom = safeRoomId(roomInput);
+    const nextUrl = `${window.location.pathname}?room=${nextRoom}`;
+    window.history.replaceState({}, "", nextUrl);
+    loadFromRoom(nextRoom);
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setState((prev) => ({ ...prev, lastActionText: "連結複製好了，傳給對方就能進同一個小屋。" }));
+    } catch {
+      setState((prev) => ({ ...prev, lastActionText: "複製失敗了，但你可以手動複製上面的房間連結。" }));
+    }
+  }
+
+  function resetAll() {
+    localStorage.removeItem(getStorageKey(state.roomId));
+    const fresh = { ...defaultState, roomId: state.roomId };
+    setState(fresh);
+    setNoteText("");
+    setDiaryText("");
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-orange-50 to-sky-50 p-4 md:p-8 text-slate-800">
+      <div className="mx-auto max-w-7xl grid gap-4 md:gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 grid gap-4">
+          <Card className="rounded-3xl shadow-lg border-0 bg-white/80 backdrop-blur">
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-2xl md:text-3xl flex items-center gap-2">
+                    <Home className="w-6 h-6" /> {state.petName} 的情侶小屋
+                  </CardTitle>
+                  <p className="text-sm text-slate-500 mt-1">名字都可以改，也能用同一個房間代碼共享。</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Badge className="rounded-full px-3 py-1 text-sm">連續天數 {state.streak}</Badge>
+                  <Badge variant="secondary" className="rounded-full px-3 py-1 text-sm">愛心 {state.petLove}</Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-[1.25fr_0.95fr] gap-4 items-start">
+                <div className="grid gap-4">
+                  <CuteDog mood={state.petMood} accessory={state.accessory} petName={state.petName} background={state.background} />
+                  <div className="rounded-3xl bg-rose-50 p-4 text-sm md:text-base">
+                    <p className="font-medium flex items-center gap-2"><Smile className="w-4 h-4" /> {state.petName} 說：</p>
+                    <p className="mt-2">{state.lastActionText}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <Card className="rounded-[28px] border-0 shadow-sm bg-white/90">
+                    <CardContent className="p-5 grid gap-4">
+                      <div>
+                        <div className="text-sm mb-2">現在來陪牠的是</div>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button onClick={() => visitAs(state.meName)} className="rounded-2xl">{state.meName}</Button>
+                          <Button variant="secondary" onClick={() => visitAs(state.partnerName)} className="rounded-2xl">{state.partnerName}</Button>
+                        </div>
+                        <div className="mt-3 text-sm text-slate-500">{getStatusText(state)}</div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-2"><span>心情</span><span>{state.petMood}/100</span></div>
+                        <Progress value={state.petMood} className="h-3" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-2"><span>體力</span><span>{state.petEnergy}/100</span></div>
+                        <Progress value={state.petEnergy} className="h-3" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-2"><span>飢餓</span><span>{state.petHunger}/100</span></div>
+                        <Progress value={state.petHunger} className="h-3" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button onClick={() => interact("pet")} className="rounded-2xl h-14 text-base"><Heart className="w-4 h-4 mr-2" />摸摸</Button>
+                    <Button onClick={() => interact("feed")} variant="secondary" className="rounded-2xl h-14 text-base"><UtensilsCrossed className="w-4 h-4 mr-2" />餵食</Button>
+                    <Button onClick={() => interact("sleep")} variant="outline" className="rounded-2xl h-14 text-base"><Moon className="w-4 h-4 mr-2" />睡覺</Button>
+                    <Button onClick={() => setState((p) => ({ ...p, accessory: accessories[(accessories.indexOf(p.accessory) + 1) % accessories.length], lastActionText: getReaction("dress", p.currentUser, p.todayMood) }))} variant="outline" className="rounded-2xl h-14 text-base"><Shirt className="w-4 h-4 mr-2" />換裝</Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card className="rounded-3xl shadow-sm border-0">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2"><MessageCircle className="w-5 h-5" /> 留一句話</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="例如：今天辛苦了，記得吃飯。" className="rounded-2xl" />
+                <Button onClick={saveNote} className="rounded-2xl">送給對方和 {state.petName}</Button>
+                <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                  {state.notes.length === 0 ? <div className="text-sm text-slate-500">還沒有留言。</div> : state.notes.map((note, idx) => (
+                    <div key={idx} className="rounded-2xl bg-slate-50 p-3">
+                      <div className="text-sm font-medium">{note.from}</div>
+                      <div className="mt-1">{note.text}</div>
+                      <div className="mt-1 text-xs text-slate-500">{note.time}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl shadow-sm border-0">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2"><CalendarHeart className="w-5 h-5" /> 今日心情與紀錄</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div>
+                  <div className="text-sm mb-2">今天的心情</div>
+                  <div className="flex flex-wrap gap-2">
+                    {moodOptions.map((m) => (
+                      <Button key={m} variant={state.todayMood === m ? "default" : "secondary"} className="rounded-full" onClick={() => setState((prev) => ({ ...prev, todayMood: m, lastActionText: getReaction("mood", prev.currentUser, m) }))}>{m}</Button>
+                    ))}
+                  </div>
+                </div>
+                <Textarea value={diaryText} onChange={(e) => setDiaryText(e.target.value)} placeholder="寫一句今天想記下來的話。" className="min-h-[100px] rounded-2xl" />
+                <Button onClick={saveDiary} className="rounded-2xl">存下今天</Button>
+                <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                  {state.diary.length === 0 ? <div className="text-sm text-slate-500">還沒有紀錄。</div> : state.diary.map((item, idx) => (
+                    <div key={idx} className="rounded-2xl bg-amber-50 p-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary">{item.by}</Badge>
+                        <Badge variant="outline">{item.mood}</Badge>
+                      </div>
+                      <div className="mt-2">{item.text}</div>
+                      <div className="mt-1 text-xs text-slate-500">{item.time}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          <Card className="rounded-3xl shadow-sm border-0">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2"><Users className="w-5 h-5" /> 小屋設定</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <div>
+                <div className="text-sm mb-2">你的名字</div>
+                <Input value={state.meName} onChange={(e) => setState((prev) => ({ ...prev, meName: e.target.value || "你" }))} className="rounded-2xl" />
+              </div>
+              <div>
+                <div className="text-sm mb-2">對方名字</div>
+                <Input value={state.partnerName} onChange={(e) => setState((prev) => ({ ...prev, partnerName: e.target.value || "女友" }))} className="rounded-2xl" />
+              </div>
+              <div>
+                <div className="text-sm mb-2">狗狗名字</div>
+                <Input value={state.petName} onChange={(e) => setState((prev) => ({ ...prev, petName: e.target.value || "陪陪" }))} className="rounded-2xl" />
+              </div>
+              <div>
+                <div className="text-sm mb-2">房間背景</div>
+                <div className="flex flex-wrap gap-2">
+                  {backgrounds.map((b) => (
+                    <Button key={b} variant={state.background === b ? "default" : "secondary"} className="rounded-full" onClick={() => setState((prev) => ({ ...prev, background: b }))}>{b}</Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm mb-2">紀念日</div>
+                <Input type="date" value={state.anniversary} onChange={(e) => setState((prev) => ({ ...prev, anniversary: e.target.value }))} className="rounded-2xl" />
+                <div className="text-sm text-slate-500 mt-2">{anniversaryText}</div>
+              </div>
+              <Button onClick={saveNow} className="rounded-2xl"><Save className="w-4 h-4 mr-2" />儲存現在的小屋</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl shadow-sm border-0">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2"><Cloud className="w-5 h-5" /> 情侶共用同步</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 text-sm">
+              <div>
+                <div className="text-sm mb-2">房間代碼</div>
+                <div className="flex gap-2">
+                  <Input value={roomInput} onChange={(e) => setRoomInput(e.target.value)} className="rounded-2xl" />
+                  <Button onClick={switchRoom} className="rounded-2xl">進入</Button>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-sky-50 p-3">
+                <div className="font-medium">共用方式</div>
+                <div className="mt-1 text-slate-600">把同一個房間代碼或連結傳給對方，就能進同一個小屋。</div>
+              </div>
+              <div>
+                <div className="text-sm mb-2">房間連結</div>
+                <Input value={shareLink} readOnly className="rounded-2xl" />
+              </div>
+              <Button variant="secondary" onClick={copyLink} className="rounded-2xl"><Copy className="w-4 h-4 mr-2" />複製連結</Button>
+              <div className="rounded-2xl bg-amber-50 p-3 text-slate-700">
+                目前這版是「同房間結構 + 同裝置即時更新 + 可分享房間連結」。真正跨兩支手機自動同步還需要接上雲端資料庫，例如 Supabase 或 Firebase。
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl shadow-sm border-0">
+            <CardHeader>
+              <CardTitle className="text-xl">{state.petName} 小檔案</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 text-sm">
+              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>總來訪</span><span>{state.totalVisits}</span></div>
+              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>摸摸次數</span><span>{state.totalPets}</span></div>
+              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>餵食次數</span><span>{state.totalFeeds}</span></div>
+              <div className="rounded-2xl bg-slate-50 p-3 flex justify-between"><span>睡覺次數</span><span>{state.totalSleeps}</span></div>
+              <div className="rounded-2xl bg-rose-50 p-3">
+                <div className="font-medium">今日狀態</div>
+                <div className="mt-1 text-slate-600">{getStatusText(state)}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button variant="outline" onClick={resetAll} className="rounded-2xl h-12"><RotateCcw className="w-4 h-4 mr-2" />重設這個房間</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
