@@ -446,6 +446,7 @@
       <h2>小屋門禁</h2>
       <p>為了保護隱私，請輸入你們約定好的「秘密房間代碼」。<br>(此代碼不會存放在 GitHub 上)</p>
       <input type="text" id="roomSecretInput" placeholder="例如：my-love-1314" autocomplete="off" />
+      <label style="margin-top: 12px; margin-bottom: 12px; font-weight: normal; font-size:14px; display:inline-block;"><input type="checkbox" id="chkRemember" checked /> 記住我的代碼（請勿在公用設備勾選）</label>
       <button class="full" id="btnEnterRoom">進入小屋</button>
       <div class="small" style="margin-top: 16px;">如果您是第一次來，請隨便創一個名字。</div>
     </div>
@@ -667,12 +668,20 @@
     <div id="tabSettings" class="sec-section">
       <section class="card section-card" id="settingsSection">
         <h2 class="section-title">⚙️ 小屋設定</h2>
+        <div style="background: #fffbeb; padding: 12px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #fde68a;">
+          <label style="margin-bottom:8px;">📱 這台手機目前是誰在操作？</label>
+          <div class="row">
+            <button id="btnRoleMe" class="soft" style="border:2px solid transparent;">我</button>
+            <button id="btnRolePartner" class="secondary" style="border:2px solid transparent;">另一半</button>
+          </div>
+          <div class="small" style="margin-top:6px;">選擇後，你寫的日記或摸狗狗就會以這個身分顯示！</div>
+        </div>
         <div>
-          <label>你的稱呼</label>
+          <label>身分一 稱呼</label>
           <input id="meNameInput" placeholder="例如：爸爸" />
         </div>
         <div>
-          <label>另一半稱呼</label>
+          <label>身分二 稱呼</label>
           <input id="partnerNameInput" placeholder="例如：媽媽" />
         </div>
         <div>
@@ -837,6 +846,11 @@
     let client = null, channel = null, pushing = false;
 
     // --- Core Logic ---
+    function getMyName() {
+        const role = localStorage.getItem('peipei-local-role') || 'meName';
+        return state[role] || (role === 'meName' ? '我' : '另一半');
+    }
+
     function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
     function todayStr() { return new Date().toISOString().split('T')[0]; }
     function safeId(v) { return (v || "").toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 32); }
@@ -909,7 +923,6 @@
 
     async function fetchWeather() {
         try {
-            // Simplified: Always Taipei for demo or use geocoding
             const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=25.03&longitude=121.56&current_weather=true`);
             const data = await res.json();
             const temp = data.current_weather.temperature;
@@ -949,7 +962,6 @@
             const accName = id.replace('acc','').replace('Scarf','領巾').replace('Bow','蝴蝶結').replace('Hat','帽').replace('Cape','小披風').replace('Strawberry','草莓帽').replace('Crown','小皇冠').replace('Cool','酷酷墨鏡').replace('Bowtie','紳士領結').replace('Wings','天使翅膀').replace('Mane','獅子鬃毛');
             document.getElementById(id).style.display = (state.accessory === accName) ? 'block' : 'none';
         });
-        // Accessory logic handled by loop above
 
         const stage = document.getElementById('dogStage');
         stage.className = "dog-stage";
@@ -984,7 +996,12 @@
         document.getElementById('statFeeds').textContent = state.totalFeeds;
         document.getElementById('statSleeps').textContent = state.totalSleeps;
 
-        // Dynamic Dog Color
+        const currentRole = localStorage.getItem('peipei-local-role') || 'meName';
+        document.getElementById('btnRoleMe').textContent = state.meName || "我";
+        document.getElementById('btnRolePartner').textContent = state.partnerName || "另一半";
+        document.getElementById('btnRoleMe').className = currentRole === 'meName' ? 'soft active-role' : 'secondary';
+        document.getElementById('btnRolePartner').className = currentRole === 'partnerName' ? 'soft active-role' : 'secondary';
+
         const c0 = state.petColor || "#f4c98d";
         document.getElementById('furMainStop0').setAttribute('stop-color', adjustColor(c0, 20));
         document.getElementById('furMainStop68').setAttribute('stop-color', c0);
@@ -1038,14 +1055,43 @@
     function renderList(id, items, type) {
         const wrap = document.getElementById(id);
         wrap.innerHTML = items.length ? '' : '<div class="empty">還沒有任何紀錄喔。</div>';
-        items.forEach(it => {
+        items.forEach((it, idx) => {
             const div = document.createElement('div');
             div.className = `item ${type === 'diary' ? 'warm' : ''}`;
+            div.style.position = 'relative';
+            
+            let htmlStr = '';
             if(type === 'note') {
-                div.innerHTML = `<div class="item-top"><span class="tag pink">${it.from}</span></div><div>${it.text}</div><div class="small">${it.time}</div>`;
+                htmlStr = `<div class="item-top"><span class="tag pink">${it.from}</span></div><div style="padding-right:48px; line-height:1.5;">${it.text}</div><div class="small">${it.time}</div>`;
             } else {
-                div.innerHTML = `<div class="item-top"><span class="tag">${it.by}</span><span class="tag gray">${it.mood}</span></div><div>${it.text}</div><div class="small">${it.time}</div>`;
+                htmlStr = `<div class="item-top"><span class="tag">${it.by}</span><span class="tag gray">${it.mood}</span></div><div style="padding-right:48px; line-height:1.5;">${it.text}</div><div class="small">${it.time}</div>`;
             }
+            
+            const actionHtml = `
+                <div style="position:absolute; right:12px; top:12px; display:flex; gap:12px; font-size:16px;">
+                    <span class="action-edit" style="cursor:pointer;" title="編輯">✏️</span>
+                    <span class="action-del" style="cursor:pointer;" title="刪除">🗑️</span>
+                </div>
+            `;
+            div.innerHTML = htmlStr + actionHtml;
+
+            div.querySelector('.action-edit').onclick = () => {
+                const nxt = prompt('修改內容：', it.text);
+                if(nxt !== null && nxt.trim() !== '') {
+                    const arr = [...items];
+                    arr[idx] = { ...it, text: nxt.trim(), time: new Date().toLocaleString() };
+                    if(type === 'note') commit({ notes: arr }); else commit({ diary: arr });
+                }
+            };
+            
+            div.querySelector('.action-del').onclick = () => {
+                if(confirm('確定要刪除這筆紀錄嗎？')) {
+                    const arr = [...items];
+                    arr.splice(idx, 1);
+                    if(type === 'note') commit({ notes: arr }); else commit({ diary: arr });
+                }
+            };
+            
             wrap.appendChild(div);
         });
     }
@@ -1064,7 +1110,7 @@
 
     // --- State & Sync ---
     async function commit(updates) {
-        state = { ...state, ...updates, updatedAt: new Date().toISOString(), updatedBy: state.currentUser };
+        state = { ...state, ...updates, updatedAt: new Date().toISOString(), updatedBy: getMyName() };
         localStorage.setItem(CONFIG.storagePrefix + state.roomId, JSON.stringify(state));
         render();
         if(client) {
@@ -1126,33 +1172,33 @@
             up.petMood = clamp(state.petMood + 8, 0, 100);
             up.petLove = state.petLove + 2;
             up.totalPets = state.totalPets + 1;
-            up.lastActionText = "被摸摸好舒服喔～❤️";
+            up.lastActionText = `${getMyName()} 摸摸我，好舒服喔～❤️`;
             triggerAnim(hero, 'interact-pet', 1500);
         } else if(type === 'feed') {
             up.petFullness = clamp(state.petFullness + 25, 0, 100);
             up.petMood = clamp(state.petMood + 5, 0, 100);
             up.totalFeeds = state.totalFeeds + 1;
-            up.lastActionText = "這個超好吃的！謝謝你。🍖";
+            up.lastActionText = `${getMyName()} 餵我吃了澎湃的一餐！🍖`;
             await animateProp('propBowl', 3000);
             triggerAnim(hero, 'interact-feed', 3000);
         } else if(type === 'shake') {
             up.petLove = state.petLove + 5;
-            up.lastActionText = "來！握手手～我最乖了！🤝";
+            up.lastActionText = `我和 ${getMyName()} 握手了！我最乖了！🤝`;
             triggerAnim(hero, 'interact-shake', 2000);
         } else if(type === 'play') {
             up.petEnergy = clamp(state.petEnergy - 15, 0, 100);
             up.petMood = clamp(state.petMood + 20, 0, 100);
-            up.lastActionText = "接球！跑跑跳跳真有趣 🎾";
+            up.lastActionText = `${getMyName()} 跟我丟球玩，超開心的啦🎾`;
             animateBall();
             triggerAnim(hero, 'interact-play', 2500);
         } else if(type === 'wash') {
             up.petMood = clamp(state.petMood - 5, 0, 100);
-            up.lastActionText = "泡泡好多喔！我要變乾淨了 🫧";
+            up.lastActionText = `${getMyName()} 幫我洗澡，全身香噴噴！🫧`;
             animateProp('propBrush', 2500);
             triggerAnim(hero, 'interact-wash', 2500);
         } else if(type === 'brush') {
             up.petMood = clamp(state.petMood + 10, 0, 100);
-            up.lastActionText = "刷毛好癢喔，但我好喜歡～✨";
+            up.lastActionText = `謝謝 ${getMyName()} 幫我梳毛，變漂亮了✨`;
             animateProp('propBrush', 2000);
             triggerAnim(hero, 'interact-brush', 2000);
         } else if(type === 'sleep') {
@@ -1195,11 +1241,16 @@
         }, 1600);
     }
 
-    // --- Privacy Audit ---
-    // Zero sensitive data detected in code. All room data is dynamic.
-
     function bind() {
-        // Navigation logic for Tabs
+        document.getElementById('btnRoleMe').onclick = () => {
+            localStorage.setItem('peipei-local-role', 'meName');
+            render(); haptic();
+        };
+        document.getElementById('btnRolePartner').onclick = () => {
+            localStorage.setItem('peipei-local-role', 'partnerName');
+            render(); haptic();
+        };
+
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.onclick = () => {
                 const targetId = btn.getAttribute('data-tab');
@@ -1213,7 +1264,6 @@
             };
         });
 
-        // Main interactions
         document.getElementById('btnPet').onclick = () => interact('pet', '❤️');
         document.getElementById('btnFeed').onclick = () => interact('feed', '🍖');
         document.getElementById('btnHandshake').onclick = () => interact('shake', '🐾');
@@ -1223,7 +1273,6 @@
         document.getElementById('btnSleep').onclick = () => interact('sleep', '💤');
         document.getElementById('btnDress').onclick = () => commit({ accessory: ACCESSORIES[(ACCESSORIES.indexOf(state.accessory) + 1) % ACCESSORIES.length] });
 
-        // Mobile / Mini pet buttons
         if(document.getElementById('miniPetBtn')) document.getElementById('miniPetBtn').onclick = () => interact('pet', '❤️');
         if(document.getElementById('miniFeedBtn')) document.getElementById('miniFeedBtn').onclick = () => interact('feed', '🍖');
         if(document.getElementById('miniSleepBtn')) document.getElementById('miniSleepBtn').onclick = () => interact('sleep', '💤');
@@ -1335,7 +1384,7 @@
         // --- Privacy & Entry Logic ---
         const params = new URLSearchParams(window.location.search);
         const urlRoom = safeId(params.get('room'));
-        const localRoom = localStorage.getItem(CONFIG.roomKey);
+        const localRoom = localStorage.getItem(CONFIG.roomKey) || sessionStorage.getItem(CONFIG.roomKey);
         
         if(urlRoom) {
             state.roomId = urlRoom;
@@ -1358,11 +1407,15 @@
             const secret = safeId(document.getElementById('roomSecretInput').value);
             if(!secret) { alert("請輸入一個代碼喔！"); return; }
             state.roomId = secret;
-            localStorage.setItem(CONFIG.roomKey, secret);
+            if(document.getElementById('chkRemember').checked) {
+                localStorage.setItem(CONFIG.roomKey, secret);
+            } else {
+                sessionStorage.setItem(CONFIG.roomKey, secret);
+            }
             document.getElementById('entryOverlay').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('entryOverlay').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'grid';
                 document.getElementById('mainApp').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('mainApp').style.transition = 'opacity 0.5s ease-in';
