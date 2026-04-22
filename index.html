@@ -713,7 +713,7 @@
                <input type="time" id="studyStart" />
                <input type="time" id="studyEnd" />
             </div>
-            <label style="margin-top:4px;"><input type="checkbox" id="studyActive" /> 開啟讀書靜音</label>
+            <label style="margin-top:4px;"><input type="checkbox" id="studyActive" /> 開啟讀書應援</label>
           </div>
         </div>
         <button class="full" id="btnSaveNow" style="margin-top:12px;">套用設定</button>
@@ -722,8 +722,11 @@
       <section class="card section-card" id="syncSection">
         <h2 class="section-title">☁️ 雲端同步</h2>
         <div class="row">
-          <input id="roomInput" placeholder="房間代碼" />
-          <button id="btnSwitchRoom">切換</button>
+          <input id="roomInput" placeholder="新的房間代碼" />
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="btnSwitchRoom" class="secondary">前往新房間</button>
+          <button id="btnMigrateRoom" style="background:#f59e0b; color:white;">帶著記憶搬家</button>
         </div>
         <div class="row">
           <input id="shareLinkInput" readonly />
@@ -1270,13 +1273,25 @@
         document.getElementById('btnLeaveRoom').onclick = () => {
             if(confirm("確定要離開這個房間並回到門禁畫面嗎？")) {
                 localStorage.removeItem(CONFIG.roomKey);
-                window.location.reload();
+                window.location.href = window.location.pathname;
             }
         };
 
         document.getElementById('btnSwitchRoom').onclick = () => {
             const r = safeId(document.getElementById('roomInput').value);
             if(r) window.location.search = `?room=${r}`;
+        };
+
+        document.getElementById('btnMigrateRoom').onclick = async () => {
+            const r = safeId(document.getElementById('roomInput').value);
+            if(!r) return alert("請輸入想要搬過去的新房間代碼！");
+            if(r === state.roomId) return alert("已經在目前的這個房間囉！");
+            if(confirm(`確定要連同所有的記憶一起搬家到「${r}」嗎？\n\n搬家後，原本的房間代碼就不會再更新了。`)) {
+                const newState = { ...state, roomId: r };
+                localStorage.setItem(CONFIG.storagePrefix + r, JSON.stringify(newState));
+                if(client) await client.from('pet_rooms').upsert({ room_id: r, state: newState });
+                window.location.search = `?room=${r}`;
+            }
         };
         
         document.getElementById('btnCopyLink').onclick = () => {
