@@ -349,6 +349,7 @@
     #earL_grp { transform-origin: 164px 35px; animation: earTwitchL 4s ease-in-out infinite; }
     #earR_grp { transform-origin: 246px 35px; animation: earTwitchR 4.5s ease-in-out infinite; }
 
+
     .state-happy #tailGroup { animation: wagHappy .42s ease-in-out infinite; }
     .state-happy #dogBodyGroup { animation: happyBounce .7s ease-in-out infinite; }
     .state-happy #tongue { display: block; }
@@ -358,7 +359,18 @@
     .state-tired #faceGroup { animation: nodSlow 3s ease-in-out infinite; }
     .state-hungry #tailGroup { animation: wagHungry .9s ease-in-out infinite; }
     .state-hungry #faceGroup { animation: headTilt 1.8s ease-in-out infinite; }
-    .state-pet #tailGroup { animation: wagHappy .32s ease-in-out infinite; }
+    
+    /* Interactive States Triggered by Classes */
+    .interact-shake #pawR { animation: pawWave 1s ease-in-out forwards; }
+    .interact-shake #tailGroup { animation: wagHappy 0.2s ease-in-out infinite; }
+    
+    .interact-play #dogBodyGroup { animation: jumpJoy 1.2s ease-in-out running; }
+    .interact-play #tailGroup { animation: wagHappy 0.15s ease-in-out infinite; }
+    
+    .interact-wash #dogBodyGroup { animation: shakeClean 0.8s ease-in-out; }
+    
+    .interact-brush #dogBodyGroup { animation: leanSide 1.5s ease-in-out; }
+    .interact-brush #tongue { display: block; }
 
     @keyframes breathe { 0%,100% { transform: translateY(0px) scaleY(1); } 50% { transform: translateY(-3px) scaleY(1.015); } }
     @keyframes wagNormal { 0%,100% { transform: rotate(8deg); } 50% { transform: rotate(-10deg); } }
@@ -371,6 +383,30 @@
     @keyframes sleepFloat { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
     @keyframes earTwitchL { 0%,90%,100% { transform: rotate(0deg); } 95% { transform: rotate(-8deg); } }
     @keyframes earTwitchR { 0%,92%,100% { transform: rotate(0deg); } 96% { transform: rotate(8deg); } }
+    
+    /* New Keyframes */
+    @keyframes pawWave { 
+      0% { transform: rotate(0deg); }
+      30% { transform: rotate(-30deg) translateY(-20px); }
+      50% { transform: rotate(-15deg) translateY(-15px); }
+      70% { transform: rotate(-30deg) translateY(-20px); }
+      100% { transform: rotate(0deg); }
+    }
+    @keyframes jumpJoy {
+      0%, 100% { transform: translateY(0) scale(1); }
+      30% { transform: translateY(-40px) scale(1.05) rotate(5deg); }
+      50% { transform: translateY(10px) scale(0.95); }
+      70% { transform: translateY(-20px) scale(1.02) rotate(-5deg); }
+    }
+    @keyframes shakeClean {
+      0%, 100% { transform: rotate(0deg); }
+      20%, 60% { transform: rotate(-8deg) translateX(-5px); }
+      40%, 80% { transform: rotate(8deg) translateX(5px); }
+    }
+    @keyframes leanSide {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(5deg) scale(1.02) translateX(8px); }
+    }
 
     @media (min-width: 900px) {
       .app { max-width: 1120px; grid-template-columns: 1.1fr 0.9fr; align-items: start; }
@@ -378,10 +414,42 @@
       .bottom-nav { left: 50%; right: auto; width: 600px; transform: translateX(-50%); }
       .fab-panel { left: 50%; right: auto; width: 600px; transform: translateX(-50%); }
     }
+    /* Entry Overlay */
+    #entryOverlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, var(--bg1), var(--bg3));
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .entry-card {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .entry-card h2 { margin-bottom: 20px; font-size: 24px; color: #be123c; }
+    .entry-card p { font-size: 14px; margin-bottom: 24px; color: var(--muted); }
+    #roomSecretInput { margin-bottom: 16px; text-align: center; font-size: 18px; letter-spacing: 2px; }
   </style>
 </head>
 <body>
-  <div class="app">
+  <!-- Entry Gate -->
+  <div id="entryOverlay">
+    <div class="card entry-card">
+      <div style="font-size: 64px; margin-bottom: 10px;">🏠</div>
+      <h2>小屋門禁</h2>
+      <p>為了保護隱私，請輸入你們約定好的「秘密房間代碼」。<br>(此代碼不會存放在 GitHub 上)</p>
+      <input type="text" id="roomSecretInput" placeholder="例如：my-love-1314" autocomplete="off" />
+      <button class="full" id="btnEnterRoom">進入小屋</button>
+      <div class="small" style="margin-top: 16px;">如果您是第一次來，請隨便創一個名字。</div>
+    </div>
+  </div>
+
+  <div class="app" id="mainApp" style="display:none;">
     <div class="left">
       <section class="card hero-card" id="heroSection">
         <div class="hero-head">
@@ -439,6 +507,16 @@
               </g>
 
               <g id="dogBodyGroup" filter="url(#softShadow)">
+                <!-- Paws -->
+                <g id="pawL" style="transform-origin: 164px 280px;">
+                  <ellipse cx="164" cy="286" rx="20" ry="14" fill="url(#furMain)" />
+                  <ellipse cx="164" cy="292" rx="12" ry="6" fill="#ffd6c8" opacity="0.6" />
+                </g>
+                <g id="pawR" style="transform-origin: 248px 280px;">
+                  <ellipse cx="248" cy="286" rx="20" ry="14" fill="url(#furMain)" />
+                  <ellipse cx="248" cy="292" rx="12" ry="6" fill="#ffd6c8" opacity="0.6" />
+                </g>
+
                 <g id="earL_grp">
                     <path d="M136 112 C116 72, 122 28, 164 35 C190 39, 197 84, 189 126 C183 155, 151 153, 136 112 Z" fill="url(#earGrad)" />
                     <path d="M156 94 C148 68, 153 48, 171 54 C183 58, 183 84, 177 108 C173 124, 161 119, 156 94 Z" fill="url(#innerEar)" opacity="0.92" />
@@ -472,8 +550,6 @@
 
                 <ellipse cx="206" cy="250" rx="88" ry="64" fill="url(#furMain)" />
                 <ellipse cx="206" cy="260" rx="56" ry="38" fill="url(#furLight)" />
-                <ellipse cx="164" cy="264" rx="34" ry="22" fill="url(#furLight)" />
-                <ellipse cx="248" cy="264" rx="34" ry="22" fill="url(#furLight)" />
               </g>
 
               <g id="accBlueScarf" style="display:none"><path d="M148 220 Q206 238 264 220 L248 248 Q206 262 164 248 Z" fill="#7dc8ff" /><circle cx="244" cy="246" r="6" fill="#5eb5f4"/></g>
@@ -491,14 +567,14 @@
         <div class="speech" id="speech">汪！我也在想你耶。</div>
 
         <div class="quick-grid">
-          <button id="btnVisitMe">你來了</button>
-          <button id="btnVisitPartner" class="secondary">另一半</button>
           <button id="btnPet">摸摸</button>
           <button id="btnFeed" class="soft">餵食</button>
+          <button id="btnHandshake">握手</button>
+          <button id="btnPlayBall" class="blue">玩球</button>
+          <button id="btnWash" class="soft">洗澡</button>
+          <button id="btnBrush" class="secondary">梳毛</button>
           <button id="btnSleep" class="secondary">睡覺</button>
           <button id="btnDress" class="blue">換裝</button>
-          <button id="btnPlay" class="soft">玩耍</button>
-          <button id="btnWalk" class="secondary">漫步</button>
         </div>
       </section>
 
@@ -850,10 +926,16 @@
     // --- Interactions ---
     function interact(type, emoji) {
         haptic();
+        const hero = document.getElementById('heroSection');
         const rect = document.getElementById('dogSvg').getBoundingClientRect();
         spawnParticles(emoji, rect.left + rect.width/2, rect.top + rect.height/2);
         
         if(channel) channel.send({ type: 'broadcast', event: 'vibe', payload: { emoji } });
+
+        // Trigger animation class
+        const animClass = `interact-${type}`;
+        hero.classList.add(animClass);
+        setTimeout(() => hero.classList.remove(animClass), 1500);
 
         const up = { lastActionText: "" };
         if(type === 'pet') {
@@ -866,36 +948,43 @@
             up.petMood = clamp(state.petMood + 5, 0, 100);
             up.totalFeeds = state.totalFeeds + 1;
             up.lastActionText = "這個超好吃的！謝謝你。🍖";
+        } else if(type === 'shake') {
+            up.petLove = state.petLove + 5;
+            up.lastActionText = "來！握手手～我最乖了！🤝";
+        } else if(type === 'play') {
+            up.petEnergy = clamp(state.petEnergy - 15, 0, 100);
+            up.petMood = clamp(state.petMood + 20, 0, 100);
+            up.lastActionText = "接球！跑跑跳跳真有趣 🎾";
+        } else if(type === 'wash') {
+            up.petMood = clamp(state.petMood - 5, 0, 100);
+            up.lastActionText = "泡泡好多喔！我要變乾淨了 🫧";
+        } else if(type === 'brush') {
+            up.petMood = clamp(state.petMood + 10, 0, 100);
+            up.lastActionText = "刷毛好癢喔，但我好喜歡～✨";
         } else if(type === 'sleep') {
             up.petEnergy = clamp(state.petEnergy + 30, 0, 100);
             up.totalSleeps = state.totalSleeps + 1;
             up.lastActionText = "我要去跟周公玩一下了，晚安。💤";
-        } else if(type === 'play') {
-            up.petEnergy = clamp(state.petEnergy - 10, 0, 100);
-            up.petMood = clamp(state.petMood + 15, 0, 100);
-            up.lastActionText = "玩遊戲最開心了！哈哈哈 🎾";
-        } else if(type === 'walk') {
-            up.petEnergy = clamp(state.petEnergy - 15, 0, 100);
-            up.petMood = clamp(state.petMood + 20, 0, 100);
-            up.streak = state.streak + 1;
-            up.lastActionText = "外面的空氣好新鮮喔！🚶‍♂️🐕";
         }
         commit(up);
     }
 
     // --- Events ---
     function bind() {
-        document.getElementById('btnVisitMe').onclick = () => { visit(state.meName); interact('pet','❤️'); };
-        document.getElementById('btnVisitPartner').onclick = () => { visit(state.partnerName); interact('pet','💖'); };
+        // Main interactions
         document.getElementById('btnPet').onclick = () => interact('pet', '❤️');
-        document.getElementById('miniPetBtn').onclick = () => interact('pet', '❤️');
         document.getElementById('btnFeed').onclick = () => interact('feed', '🍖');
-        document.getElementById('miniFeedBtn').onclick = () => interact('feed', '🍖');
+        document.getElementById('btnHandshake').onclick = () => interact('shake', '🐾');
+        document.getElementById('btnPlayBall').onclick = () => interact('play', '🎾');
+        document.getElementById('btnWash').onclick = () => interact('wash', '🫧');
+        document.getElementById('btnBrush').onclick = () => interact('brush', '✨');
         document.getElementById('btnSleep').onclick = () => interact('sleep', '💤');
-        document.getElementById('miniSleepBtn').onclick = () => interact('sleep', '💤');
-        document.getElementById('btnPlay').onclick = () => interact('play', '🎾');
-        document.getElementById('btnWalk').onclick = () => interact('walk', '🌳');
         document.getElementById('btnDress').onclick = () => commit({ accessory: ACCESSORIES[(ACCESSORIES.indexOf(state.accessory) + 1) % ACCESSORIES.length] });
+
+        // Mobile / Mini pet buttons
+        if(document.getElementById('miniPetBtn')) document.getElementById('miniPetBtn').onclick = () => interact('pet', '❤️');
+        if(document.getElementById('miniFeedBtn')) document.getElementById('miniFeedBtn').onclick = () => interact('feed', '🍖');
+        if(document.getElementById('miniSleepBtn')) document.getElementById('miniSleepBtn').onclick = () => interact('sleep', '💤');
         
         document.getElementById('dogClickArea').onclick = (e) => interact('pet', '✨');
         document.getElementById('miniPet').onclick = () => document.getElementById('fabPanel').classList.toggle('show');
@@ -954,16 +1043,74 @@
         commit({ totalVisits: state.totalVisits + 1, lastActionText: msg });
     }
 
+    // --- Idle Behaviors ---
+    function startIdle() {
+        setInterval(() => {
+            if(Math.random() > 0.7) {
+                const dog = document.getElementById('dogSvg');
+                // Random blink
+                document.getElementById('eyesOpen').style.display = 'none';
+                document.getElementById('eyesClosed').style.display = 'block';
+                setTimeout(() => {
+                    if(state.dogState !== 'sleep') {
+                        document.getElementById('eyesOpen').style.display = 'block';
+                        document.getElementById('eyesClosed').style.display = 'none';
+                    }
+                }, 200);
+            }
+        }, 5000);
+    }
+
     function init() {
+        // --- Privacy & Entry Logic ---
         const params = new URLSearchParams(window.location.search);
-        state.roomId = safeId(params.get('room')) || CONFIG.defaultRoom;
+        const urlRoom = safeId(params.get('room'));
+        const localRoom = localStorage.getItem(CONFIG.roomKey);
         
+        if(urlRoom) {
+            state.roomId = urlRoom;
+            localStorage.setItem(CONFIG.roomKey, urlRoom);
+            document.getElementById('entryOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'grid';
+            startApp();
+        } else if(localRoom) {
+            state.roomId = localRoom;
+            document.getElementById('entryOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'grid';
+            startApp();
+        }
+
+        document.getElementById('roomSecretInput').onkeypress = (e) => {
+            if(e.key === 'Enter') document.getElementById('btnEnterRoom').click();
+        };
+
+        document.getElementById('btnEnterRoom').onclick = () => {
+            const secret = safeId(document.getElementById('roomSecretInput').value);
+            if(!secret) { alert("請輸入一個代碼喔！"); return; }
+            state.roomId = secret;
+            localStorage.setItem(CONFIG.roomKey, secret);
+            document.getElementById('entryOverlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('entryOverlay').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'grid';
+                document.getElementById('mainApp').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('mainApp').style.transition = 'opacity 0.5s ease-in';
+                    document.getElementById('mainApp').style.opacity = '1';
+                }, 10);
+                startApp();
+            }, 300);
+        };
+    }
+
+    function startApp() {
         const local = localStorage.getItem(CONFIG.storagePrefix + state.roomId);
         if(local) state = { ...state, ...JSON.parse(local) };
 
         bind();
         render();
         initSupabase();
+        startIdle(); // Start idle animations
 
         if('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
