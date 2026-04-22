@@ -625,7 +625,6 @@
             <div class="progress-track"><div class="progress-fill" id="hungerBar"></div></div>
           </div>
         </div>
-        </div>
       </section>
 
       <section class="card section-card">
@@ -884,6 +883,14 @@
         const now = new Date();
         const hrs = now.getHours();
         const timeStr = now.toTimeString().slice(0, 5);
+
+        // Commit the date change to prevent loop resets
+        if(!state.lastDate || state.lastDate !== todayStr()) {
+            setTimeout(() => {
+                commit({ lastDate: todayStr(), streakDays: state.streakDays + 1, todayMood: 50, lastActionText: "" });
+            }, 50);
+            return;
+        }
 
         let greeting = "汪！";
         if(hrs >= 5 && hrs < 11) greeting = "早安！☀️";
