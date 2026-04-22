@@ -275,6 +275,10 @@
       border: 2px solid #fff;
     }
 
+    .sec-section { display: none; padding-bottom: 80px; }
+    .sec-section.active { display: grid; gap: 12px; align-content: start; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
     .bottom-nav {
       position: fixed;
       left: 12px;
@@ -629,24 +633,6 @@
           </div>
         </div>
       </section>
-
-      <section class="card section-card" id="noteSection">
-        <h2 class="section-title">💌 給彼此的話</h2>
-        <input id="noteInput" placeholder="寫點什麼給對方和陪陪吧..." />
-        <button class="full" id="btnSaveNote">傳送心意</button>
-        <div class="list" id="noteList"></div>
-      </section>
-
-      <section class="card section-card" id="diarySection">
-        <h2 class="section-title">📝 我們的日記</h2>
-        <div>
-          <label>今日心情</label>
-          <div class="chip-row" id="moodButtons"></div>
-        </div>
-        <textarea id="diaryInput" placeholder="這是一個值得紀念的瞬間嗎？"></textarea>
-        <button class="full" id="btnSaveDiary">存入回憶</button>
-        <div class="list" id="diaryList"></div>
-      </section>
     </div>
 
     <!-- Diary Tab -->
@@ -684,18 +670,6 @@
       </section>
     </div>
 
-    <!-- Settings Tab -->
-    <div id="tabSettings" class="sec-section">
-        <h2 class="section-title">🏆 成長腳印</h2>
-        <div class="stats-grid">
-          <div class="stat-row"><span>總來訪次數</span><span id="statVisits">0</span></div>
-          <div class="stat-row"><span>累積摸摸</span><span id="statPets">0</span></div>
-          <div class="stat-row"><span>餵食次數</span><span id="statFeeds">0</span></div>
-          <div class="stat-row"><span>安穩睡覺</span><span id="statSleeps">0</span></div>
-          <div class="sync-box" id="todayStateBox">今天還沒有人來找牠。</div>
-        </div>
-      </section>
-    </div>
 
     <!-- Settings Tab -->
     <div id="tabSettings" class="sec-section">
@@ -785,7 +759,6 @@
            </details>
          </div>
       </section>
-    </div>
     </div>
   </div>
 
@@ -1102,6 +1075,13 @@
         if(client) {
             pushing = true;
             await client.from('pet_rooms').upsert({ room_id: state.roomId, state: state });
+            if(channel) {
+                channel.send({
+                    type: 'broadcast',
+                    event: 'state_update',
+                    payload: state
+                });
+            }
             pushing = false;
         }
     }
@@ -1123,6 +1103,11 @@
             .on('broadcast', { event: 'vibe' }, ({ payload }) => {
                 const rect = document.getElementById('dogSvg').getBoundingClientRect();
                 spawnParticles(payload.emoji, rect.left + rect.width/2, rect.top + rect.height/2);
+            })
+            .on('broadcast', { event: 'state_update' }, ({ payload }) => {
+                if(pushing) return;
+                state = { ...state, ...payload };
+                render();
             })
             .subscribe();
         
