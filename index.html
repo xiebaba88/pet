@@ -625,6 +625,16 @@
             <div class="progress-track"><div class="progress-fill" id="hungerBar"></div></div>
           </div>
         </div>
+        </div>
+      </section>
+
+      <section class="card section-card">
+        <h2 class="section-title" style="margin:0; margin-bottom:8px;">✨ 房間風格</h2>
+        <div class="chip-row" id="backgroundButtons"></div>
+      </section>
+
+      <section class="card" style="margin-top:12px;">
+         <button class="full" id="btnLeaveRoom" style="background:#f1f5f9; color:var(--text);">🚪 離開並登出房間</button>
       </section>
     </div>
 
@@ -689,10 +699,6 @@
           <input id="petNameInput" />
         </div>
         <div>
-          <label>房間風格</label>
-          <div class="chip-row" id="backgroundButtons"></div>
-        </div>
-        <div>
           <label>紀念日</label>
           <input id="anniversaryInput" type="date" />
           <div class="small" id="anniversaryText">相伴天數計算中...</div>
@@ -746,8 +752,7 @@
       </section>
 
       <section class="card">
-         <button class="full secondary" id="btnResetRoom">重設這個房間代碼</button>
-         <button class="full" id="btnLeaveRoom" style="margin-top:12px; background:#f1f5f9; color:var(--text);">🚪 離開並登出房間</button>
+         <button class="full secondary" id="btnResetRoom">重設這個房間的內部同步紀錄</button>
       </section>
 
       <section class="card section-card">
