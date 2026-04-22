@@ -477,9 +477,9 @@
               <g id="propBlanket" style="display:none"><path d="M80 220 Q206 280 340 220 L360 360 L60 360 Z" fill="#93c5fd" opacity="0.9" /><path d="M90 230 Q206 270 330 230" fill="none" stroke="#60a5fa" stroke-width="4" stroke-dasharray="10 5" /></g>
               <defs>
                 <radialGradient id="furMain" cx="50%" cy="30%" r="75%">
-                  <stop offset="0%" stop-color="#ffe6bd"/>
-                  <stop offset="68%" stop-color="#f4c98d"/>
-                  <stop offset="100%" stop-color="#d9a56e"/>
+                  <stop offset="0%" id="furMainStop0" stop-color="#ffe6bd"/>
+                  <stop offset="68%" id="furMainStop68" stop-color="#f4c98d"/>
+                  <stop offset="100%" id="furMainStop100" stop-color="#d9a56e"/>
                 </radialGradient>
                 <radialGradient id="furLight" cx="50%" cy="32%" r="70%">
                   <stop offset="0%" stop-color="#fffdf9"/>
@@ -501,11 +501,11 @@
                   <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="rgba(0,0,0,0.16)"/>
                 </filter>
                 <filter id="furTexture" x="0%" y="0%" width="100%" height="100%">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.4" numOctaves="3" result="noise" />
-                  <feDiffuseLighting in="noise" lighting-color="#ffffff" surfaceScale="1" result="diffuse">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise" />
+                  <feDiffuseLighting in="noise" lighting-color="#ffffff" surfaceScale="0.4" result="diffuse">
                     <feDistantLight azimuth="45" elevation="60" />
                   </feDiffuseLighting>
-                  <feComposite in="diffuse" in2="SourceGraphic" operator="in" />
+                  <feComposite in="diffuse" in2="SourceGraphic" operator="arithmetic" k1="0" k2="1" k3="0.2" k4="0" />
                 </filter>
               </defs>
 
@@ -722,6 +722,10 @@
           <input id="anniversaryInput" type="date" />
           <div class="small" id="anniversaryText">相伴天數計算中...</div>
         </div>
+        <div style="margin-top:10px;">
+          <label>🎨 狗狗顏色 (毛色)</label>
+          <input type="color" id="petColorInput" style="height:44px; padding:4px;" />
+        </div>
         <div style="margin-top:10px; border-top:1px solid #f1f5f9; padding-top:10px;">
           <label>📍 我的地區 (氣象用途)</label>
           <input id="locationInput" placeholder="例如：台北" />
@@ -765,6 +769,21 @@
 
       <section class="card">
          <button class="full secondary" id="btnResetRoom">重設這個房間代碼</button>
+         <button class="full" id="btnLeaveRoom" style="margin-top:12px; background:#f1f5f9; color:var(--text);">🚪 離開並登出房間</button>
+      </section>
+
+      <section class="card section-card">
+         <h2 class="section-title">❓ 常見問題</h2>
+         <div class="small" style="line-height:1.6;">
+           <details>
+             <summary><b>如何加入主畫面 (App)？</b></summary>
+             <p style="margin-top:8px;">
+               1. <b>iOS Safari</b>: 點擊瀏覽器底部的「分享」按鈕，選「加入主畫面」。<br>
+               2. <b>Android Chrome</b>: 點擊右上角「三點」，選「安裝」或「加入主畫面」。<br>
+               3. <b>沒看到三點？</b>: 如果你已經是在電腦開啟，或是已經在 App 模式內，該選單可能不會出現。請在手機瀏覽器中開啟原始網址。
+             </p>
+           </details>
+         </div>
       </section>
     </div>
     </div>
@@ -997,11 +1016,25 @@
         document.getElementById('statFeeds').textContent = state.totalFeeds;
         document.getElementById('statSleeps').textContent = state.totalSleeps;
 
+        // Dynamic Dog Color
+        const c0 = state.petColor || "#f4c98d";
+        document.getElementById('furMainStop0').setAttribute('stop-color', adjustColor(c0, 20));
+        document.getElementById('furMainStop68').setAttribute('stop-color', c0);
+        document.getElementById('furMainStop100').setAttribute('stop-color', adjustColor(c0, -30));
+
         document.getElementById('meNameInput').value = state.meName;
         document.getElementById('partnerNameInput').value = state.partnerName;
         document.getElementById('petNameInput').value = state.petName;
         document.getElementById('roomInput').value = state.roomId;
         document.getElementById('shareLinkInput').value = `${window.location.origin}${window.location.pathname}?room=${state.roomId}`;
+        document.getElementById('petColorInput').value = state.petColor || "#f4c98d";
+        document.getElementById('locationInput').value = state.location || "";
+        document.getElementById('workStart').value = state.workHours.start;
+        document.getElementById('workEnd').value = state.workHours.end;
+        document.getElementById('workActive').checked = state.workHours.active;
+        document.getElementById('studyStart').value = state.studyHours.start;
+        document.getElementById('studyEnd').value = state.studyHours.end;
+        document.getElementById('studyActive').checked = state.studyHours.active;
         
         const ann = new Date(state.anniversary);
         if(!isNaN(ann.getTime())) {
@@ -1016,6 +1049,22 @@
         renderChips('backgroundButtons', BACKGROUNDS, state.background, (b) => commit({ background: b }));
 
         updateDogVisuals();
+    }
+
+    function adjustColor(hex, amt) {
+        let usePound = false;
+        if (hex[0] == "#") { hex = hex.slice(1); usePound = true; }
+        let num = parseInt(hex, 16);
+        let r = (num >> 16) + amt;
+        if (r > 255) r = 255; else if (r < 0) r = 0;
+        let b = ((num >> 8) & 0x00FF) + amt;
+        if (b > 255) b = 255; else if (b < 0) b = 0;
+        let g = (num & 0x0000FF) + amt;
+        if (g > 255) g = 255; else if (g < 0) g = 0;
+        const rr = r.toString(16).padStart(2, '0');
+        const gg = b.toString(16).padStart(2, '0');
+        const bb = g.toString(16).padStart(2, '0');
+        return (usePound ? "#" : "") + rr + gg + bb;
     }
 
     function renderList(id, items, type) {
@@ -1169,14 +1218,15 @@
     // --- Privacy Audit ---
     // Zero sensitive data detected in code. All room data is dynamic.
 
-    // --- Events ---
     function bind() {
-        // Navigation
+        // Navigation logic for Tabs
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.onclick = () => {
-                const target = btn.getAttribute('data-tab');
+                const targetId = btn.getAttribute('data-tab');
+                const targetEl = document.getElementById(targetId);
+                if(!targetEl) return;
                 document.querySelectorAll('.sec-section').forEach(s => s.classList.remove('active'));
-                document.getElementById(target).classList.add('active');
+                targetEl.classList.add('active');
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1216,17 +1266,6 @@
             inp.value = '';
         };
 
-        // Navigation logic for Tabs
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.onclick = () => {
-                const targetId = btn.getAttribute('data-tab');
-                document.querySelectorAll('.sec-section').forEach(s => s.classList.remove('active'));
-                document.getElementById(targetId).classList.add('active');
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-        });
 
         document.getElementById('btnSaveNow').onclick = () => {
             const up = {
@@ -1244,10 +1283,18 @@
                     start: document.getElementById('studyStart').value,
                     end: document.getElementById('studyEnd').value,
                     active: document.getElementById('studyActive').checked
-                }
+                },
+                petColor: document.getElementById('petColorInput').value
             };
             commit(up);
             alert("小屋設定已更新！🌿");
+        };
+
+        document.getElementById('btnLeaveRoom').onclick = () => {
+            if(confirm("確定要離開這個房間並回到門禁畫面嗎？")) {
+                localStorage.removeItem(CONFIG.roomKey);
+                window.location.reload();
+            }
         };
 
         document.getElementById('btnSwitchRoom').onclick = () => {
@@ -1261,7 +1308,9 @@
         };
 
         window.addEventListener('scroll', () => {
-            const rect = document.getElementById('heroSection').getBoundingClientRect();
+            const hero = document.getElementById('heroSection');
+            if(!hero) return;
+            const rect = hero.getBoundingClientRect();
             document.getElementById('miniPet').classList.toggle('show', rect.bottom < 150);
         });
     }
