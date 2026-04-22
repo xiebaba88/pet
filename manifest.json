@@ -1,0 +1,21 @@
+{
+  "name": "陪陪汪 - 情侶共養小狗",
+  "short_name": "陪陪汪",
+  "description": "與另一半共同養育可愛的數位小狗，即時同步每一刻的溫暖。",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#fff1f2",
+  "theme_color": "#fff1f2",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/616/616408.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/616/616408.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

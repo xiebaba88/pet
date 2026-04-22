@@ -2,1027 +2,972 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>陪陪汪｜情侶共養小狗</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#fff1f2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --bg1: #fff1f2;
+      --bg2: #fff7ed;
+      --bg3: #eff6ff;
+      --card: rgba(255,255,255,0.92);
+      --text: #334155;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --primary: #ffd6a5;
+      --pink: #fff1f2;
+      --blue: #dbeafe;
+      --shadow: 0 10px 30px rgba(148, 163, 184, 0.12);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
       font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-      color: #334155;
-      background: linear-gradient(180deg, #fff1f2 0%, #fff7ed 45%, #eff6ff 100%);
+      color: var(--text);
+      background: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 45%, var(--bg3) 100%);
       min-height: 100vh;
+      padding-bottom: calc(84px + var(--safe-bottom));
+      overflow-x: hidden;
     }
-    .wrap {
-      max-width: 1240px;
+
+    .app {
+      max-width: 560px;
       margin: 0 auto;
-      padding: 16px;
-      display: grid;
-      grid-template-columns: 1.25fr 0.95fr;
-      gap: 16px;
-    }
-    .left, .right { display: grid; gap: 16px; }
-    .card {
-      background: rgba(255,255,255,0.9);
-      border: 1px solid rgba(255,255,255,0.7);
-      border-radius: 24px;
-      box-shadow: 0 10px 30px rgba(148, 163, 184, 0.12);
-      padding: 16px;
-      backdrop-filter: blur(8px);
-    }
-    h1,h2,h3,p { margin: 0; }
-    .top-title {
-      display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;
-      margin-bottom: 12px;
-    }
-    .badges { display:flex; gap:8px; flex-wrap:wrap; }
-    .badge {
-      background:#f8fafc; border:1px solid #e2e8f0; padding:7px 10px; border-radius:999px; font-size:12px;
-    }
-    .badge.pink { background:#fff1f2; border-color:#fecdd3; }
-    .hero {
-      display:grid; grid-template-columns: 1.05fr 0.95fr; gap:16px; align-items:start;
-    }
-    .dog-panel {
-      position: sticky;
-      top: 12px;
-      align-self: start;
+      padding: calc(10px + var(--safe-top)) 12px 20px;
       display: grid;
       gap: 12px;
     }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.72);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 14px;
+    }
+
+    h1,h2,h3,p { margin: 0; }
+
+    .hero-card {
+      position: sticky;
+      top: calc(8px + var(--safe-top));
+      z-index: 20;
+      overflow: hidden;
+    }
+
+    .hero-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .title { font-size: 20px; font-weight: 800; line-height: 1.35; }
+    .muted { color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+    .badge-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge.pink { background: #fff1f2; border-color: #fecdd3; }
+    .badge.blue { background: #eff6ff; border-color: #bfdbfe; }
+
     .dog-stage {
-      min-height: 360px;
-      border-radius: 28px;
-      padding: 18px;
       position: relative;
+      border-radius: 24px;
+      min-height: 280px;
+      padding: 12px;
       overflow: hidden;
       background: linear-gradient(180deg, #ffe4e6 0%, #fffbeb 50%, #eff6ff 100%);
+      transition: background 0.5s ease;
     }
     .dog-stage.window { background: linear-gradient(180deg, #fde68a 0%, #fff7ed 40%, #e0f2fe 100%); }
     .dog-stage.night { background: linear-gradient(180deg, #c7d2fe 0%, #ede9fe 45%, #fce7f3 100%); }
+
     .floor {
-      position:absolute; left:0; right:0; bottom:0; height:92px; background:rgba(255,255,255,0.38);
+      position:absolute; left:0; right:0; bottom:0; height:72px; background:rgba(255,255,255,0.38);
     }
     .window-box {
-      position:absolute; right:22px; top:22px; width:82px; height:82px; border-radius:22px; border:4px solid rgba(255,255,255,0.75); background:rgba(186,230,253,0.75);
+      position:absolute; right:14px; top:14px; width:62px; height:62px; border-radius:16px; border:4px solid rgba(255,255,255,0.75); background:rgba(186,230,253,0.75);
     }
-    .window-box::before, .window-box::after {
-      content:""; position:absolute; background:rgba(255,255,255,0.86);
-    }
+    .window-box::before, .window-box::after { content:""; position:absolute; background:rgba(255,255,255,0.86); }
     .window-box::before { width:1px; height:100%; left:50%; top:0; }
     .window-box::after { height:1px; width:100%; top:50%; left:0; }
-    .star { position:absolute; font-size:20px; }
-    .star.s1 { left:26px; top:24px; }
-    .star.s2 { right:34px; top:52px; }
-    .star.s3 { left:64px; top:90px; font-size:14px; }
-    .dog-box {
-      position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; padding-top:12px;
+    .star { position:absolute; font-size:18px; }
+    .star.s1 { left:16px; top:14px; }
+    .star.s2 { right:20px; top:40px; }
+    .star.s3 { left:40px; top:68px; font-size:12px; }
+
+    .dog-wrap {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 250px;
+      padding-top: 6px;
     }
-    .dog-name { font-size: 28px; font-weight: 800; margin-top: 8px; }
-    .dog-sub { font-size: 13px; color:#64748b; margin-top:4px; }
+
+    #dogSvg {
+      width: 200px;
+      height: 180px;
+      transform-origin: center bottom;
+      filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+    }
+
+    .dog-name { font-size: 24px; font-weight: 800; margin-top: 6px; }
+    .dog-sub { font-size: 12px; color: var(--muted); margin-top: 2px; height: 18px; }
+
     .speech {
-      background:#fff1f2; padding:14px; border-radius:18px; font-size:14px; line-height:1.65;
+      margin-top: 10px;
+      background: var(--pink);
+      border-radius: 18px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 50px;
+      position: relative;
     }
-    .panel { display:grid; gap:12px; }
-    .section-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; line-height:1.35; }
-    .muted { color:#64748b; font-size:13px; line-height:1.55; }
-    .status-line { font-size:13px; color:#64748b; margin-top:8px; line-height:1.5; }
-    .progress-block { display:grid; gap:12px; }
-    .progress-label { display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; }
-    .progress-track {
-      width:100%; height:10px; border-radius:999px; background:#e2e8f0; overflow:hidden;
+    .speech::after {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 20px;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-bottom: 10px solid var(--pink);
     }
-    .progress-fill {
-      height:100%; border-radius:999px; background: linear-gradient(90deg, #fb7185, #f59e0b, #60a5fa);
-      width: 0%; transition: width .25s ease;
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
-    .btn-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:10px; }
-    button, .fake-btn {
-      border:none; border-radius:16px; padding:12px 14px; font-size:14px; font-weight:700; cursor:pointer;
-      background:#ffd6a5; color:#334155; transition:.18s ease;
-      -webkit-tap-highlight-color: transparent;
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 12px;
     }
-    button:hover { transform: translateY(-1px); }
-    button.secondary { background:#f8fafc; border:1px solid #e2e8f0; }
-    button.soft { background:#fff1f2; }
-    button.blue { background:#dbeafe; }
-    button.full { width:100%; }
-    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-    label { display:block; font-size:13px; margin-bottom:8px; font-weight:700; }
+
+    button {
+      border: none;
+      border-radius: 16px;
+      padding: 12px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--primary);
+      color: var(--text);
+      transition: all .2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    button:active { transform: scale(0.92); }
+    button.secondary { background: #f8fafc; border: 1px solid var(--line); }
+    button.soft { background: #fff1f2; }
+    button.blue { background: #dbeafe; }
+    button.full { width: 100%; }
+
+    .progress-card { display: grid; gap: 10px; }
+    .progress-row { display: grid; gap: 6px; }
+    .progress-label { display:flex; justify-content:space-between; font-size:12px; }
+    .progress-track { width:100%; height:10px; border-radius:999px; background:#e2e8f0; overflow:hidden; }
+    .progress-fill { height:100%; border-radius:999px; background: linear-gradient(90deg, #fb7185, #f59e0b, #60a5fa); width:0%; transition: width .5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    .section-card { display: grid; gap: 12px; }
+    .section-title { font-size: 17px; font-weight: 800; line-height: 1.35; display: flex; align-items: center; gap: 6px; }
+    label { display:block; font-size:13px; margin-bottom:6px; font-weight:700; }
+
     input, textarea {
-      width:100%; border-radius:16px; border:1px solid #e2e8f0; padding:12px 14px; font-size:16px; outline:none; background:#fff;
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      font-size: 16px;
+      outline: none;
+      background: #fff;
+      transition: border-color 0.2s;
     }
-    textarea { min-height:96px; resize:vertical; }
-    .list { display:grid; gap:10px; max-height:250px; overflow:auto; }
-    .item {
-      background:#f8fafc; border-radius:16px; padding:12px;
+    input:focus, textarea:focus { border-color: #fdba74; }
+    textarea { min-height: 88px; resize: vertical; }
+
+    .row { display:flex; gap:8px; }
+    .row > * { flex: 1; }
+
+    .chip-row {
+      display:flex; gap:8px; flex-wrap:wrap;
     }
+    .pill {
+      padding:8px 12px; border-radius:999px; border:1px solid var(--line); background:#f8fafc; cursor:pointer; font-size:13px;
+      transition: all 0.2s;
+    }
+    .pill.active { background:#fed7aa; border-color:#fdba74; transform: scale(1.05); }
+
+    .list { display:grid; gap:8px; max-height:220px; overflow:auto; }
+    .item { background:#f8fafc; border-radius:16px; padding:12px; animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
     .item.warm { background:#fffbeb; }
-    .item-top { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+    .item-top { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
     .tag { font-size:12px; background:#eef2ff; color:#4338ca; padding:4px 8px; border-radius:999px; }
     .tag.gray { background:#f1f5f9; color:#475569; }
     .tag.pink { background:#ffe4e6; color:#be123c; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; }
-    .small { font-size:12px; color:#64748b; margin-top:6px; }
-    .settings-grid { display:grid; gap:12px; }
-    .choice-row, .mood-row { display:flex; gap:8px; flex-wrap:wrap; }
-    .pill {
-      padding:9px 12px; border-radius:999px; border:1px solid #e2e8f0; background:#f8fafc; cursor:pointer; font-size:13px;
-    }
-    .pill.active { background:#fed7aa; border-color:#fdba74; }
-    .stat-row {
-      display:flex; justify-content:space-between; background:#f8fafc; border-radius:16px; padding:12px;
-      font-size:13px;
-    }
+    .small { font-size:12px; color: var(--muted); margin-top: 6px; }
+    .empty { color:#94a3b8; font-size:13px; padding: 20px; text-align:center; }
+
+    .stats-grid { display:grid; gap:8px; }
+    .stat-row { display:flex; justify-content:space-between; background:#f8fafc; border-radius:16px; padding:12px; font-size:13px; }
     .sync-box { background:#eff6ff; border-radius:16px; padding:12px; font-size:13px; line-height:1.6; }
-    .danger { color:#b91c1c; }
-    .empty { color:#94a3b8; font-size:13px; }
-    .footer-tip { font-size:12px; color:#64748b; line-height:1.6; }
 
-    #dogSvg {
-      width: 220px;
-      height: 220px;
-      animation: dogFloat 3.2s ease-in-out infinite;
-      transform-origin: center bottom;
+    .mini-pet {
+      position: fixed;
+      right: 14px;
+      bottom: calc(86px + var(--safe-bottom));
+      width: 64px;
+      height: 64px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.96);
+      box-shadow: 0 12px 26px rgba(15,23,42,0.16);
+      border: 1px solid rgba(255,255,255,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      cursor: pointer;
+      transition: transform 0.2s;
     }
-    #eyeL, #eyeR, #eyeGlintL, #eyeGlintR {
-      animation: blink 5.5s infinite;
-      transform-origin: center;
-    }
-    #accBlueScarf, #accPinkBow, #accStarHat, #accCape, #accStrawberry {
-      animation: accessoryBounce 2.8s ease-in-out infinite;
-      transform-origin: center;
-    }
-
-    @keyframes dogFloat {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      25% { transform: translateY(-4px) rotate(-1deg); }
-      50% { transform: translateY(-8px) rotate(0deg); }
-      75% { transform: translateY(-4px) rotate(1deg); }
-    }
-    @keyframes blink {
-      0%, 45%, 47%, 100% { opacity: 1; }
-      46% { opacity: 0.1; }
-    }
-    @keyframes accessoryBounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-2px); }
+    .mini-pet:active { transform: scale(0.9); }
+    .mini-pet.show { display: flex; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+    .mini-pet svg { width: 50px; height: 50px; }
+    .mini-badge {
+      position:absolute; top:4px; right:4px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#fb7185; color:#fff; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center;
+      border: 2px solid #fff;
     }
 
-    @media (max-width: 980px) {
-      .wrap { grid-template-columns: 1fr; padding: 12px; gap: 14px; }
-      .hero, .grid-2 { grid-template-columns:1fr; }
-      .dog-panel { position: sticky; top: 8px; z-index: 5; }
-      .right { gap: 14px; }
+    .bottom-nav {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(10px + var(--safe-bottom));
+      z-index: 70;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(255,255,255,0.8);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.12);
+      border-radius: 22px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      backdrop-filter: blur(15px);
+    }
+    .nav-btn {
+      background: transparent;
+      border: none;
+      border-radius: 16px;
+      padding: 10px 4px;
+      font-size: 11px;
+      display:grid;
+      gap:2px;
+      justify-items:center;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .nav-btn.active { background:#fff1f2; color:#be123c; transform: translateY(-2px); }
+    .nav-emoji { font-size: 20px; line-height: 1; }
+
+    .fab-panel {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(92px + var(--safe-bottom));
+      z-index: 65;
+      display: none;
+    }
+    .fab-panel.show { display: block; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+    .fab-grid {
+      display:grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 8px;
+      background: rgba(255,255,255,0.96);
+      border-radius: 22px;
+      padding: 10px;
+      box-shadow: 0 12px 28px rgba(15,23,42,0.14);
+      border: 1px solid var(--line);
+    }
+    .fab-grid button { padding: 8px 4px; font-size: 11px; }
+
+    /* Particles */
+    .particle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      font-size: 24px;
+      user-select: none;
+      animation: scatter var(--duration) ease-out forwards;
+    }
+    @keyframes scatter {
+      0% { transform: translate(0,0) scale(0.5); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; }
     }
 
-    @media (max-width: 768px) {
-      .wrap { padding: 10px; }
-      .card { padding: 14px; border-radius: 20px; }
-      .section-title { font-size: 18px; }
-      .badges { gap: 6px; }
-      .badge { width: auto; max-width: 100%; }
-      .dog-stage { min-height: 290px; padding: 12px; border-radius: 22px; }
-      .floor { height: 72px; }
-      #dogSvg { width: 175px; height: 175px; }
-      .dog-name { font-size: 24px; }
-      .speech { font-size: 13px; padding: 12px; }
-      .btn-grid { grid-template-columns: 1fr 1fr; }
-      .row { flex-direction: column; }
-      .row > * { width: 100%; }
-      .window-box { width: 66px; height: 66px; right: 14px; top: 14px; border-radius: 16px; }
-      .star.s1 { left: 18px; top: 16px; }
-      .star.s2 { right: 22px; top: 42px; }
-      .star.s3 { left: 44px; top: 72px; }
-    }
+    #tailGroup { transform-origin: 305px 252px; animation: wagNormal 1.8s ease-in-out infinite; }
+    #dogBodyGroup { transform-origin: center bottom; animation: breathe 3.1s ease-in-out infinite; }
+    #faceGroup { transform-origin: 206px 160px; }
+    #earL_grp { transform-origin: 164px 35px; animation: earTwitchL 4s ease-in-out infinite; }
+    #earR_grp { transform-origin: 246px 35px; animation: earTwitchR 4.5s ease-in-out infinite; }
 
-    @media (max-width: 520px) {
-      .top-title { margin-bottom: 10px; }
-      .badges { display:grid; grid-template-columns: 1fr 1fr; width:100%; }
-      .badge:last-child { grid-column: 1 / -1; text-align:center; }
-      .btn-grid { grid-template-columns: 1fr; }
-      .dog-panel {
-        position: sticky;
-        top: 0;
-        background: linear-gradient(180deg, rgba(255,241,242,0.96), rgba(255,247,237,0.9));
-        padding-top: 6px;
-        margin: -2px -2px 0;
-      }
-      .dog-stage { min-height: 250px; }
-      #dogSvg { width: 148px; height: 148px; }
-      .dog-name { font-size: 22px; }
-      .dog-sub { font-size: 12px; }
-      .list { max-height: 180px; }
-      .sync-box, .stat-row, .item, .item.warm { border-radius: 14px; }
-    }
+    .state-happy #tailGroup { animation: wagHappy .42s ease-in-out infinite; }
+    .state-happy #dogBodyGroup { animation: happyBounce .7s ease-in-out infinite; }
+    .state-happy #tongue { display: block; }
+    .state-sleep #tailGroup { animation: none; opacity: .55; }
+    .state-sleep #dogBodyGroup { animation: sleepFloat 2.8s ease-in-out infinite; }
+    .state-tired #tailGroup { animation: wagTired 2.8s ease-in-out infinite; }
+    .state-tired #faceGroup { animation: nodSlow 3s ease-in-out infinite; }
+    .state-hungry #tailGroup { animation: wagHungry .9s ease-in-out infinite; }
+    .state-hungry #faceGroup { animation: headTilt 1.8s ease-in-out infinite; }
+    .state-pet #tailGroup { animation: wagHappy .32s ease-in-out infinite; }
 
-    @media (prefers-reduced-motion: reduce) {
-      #dogSvg, #eyeL, #eyeR, #eyeGlintL, #eyeGlintR, #accBlueScarf, #accPinkBow, #accStarHat, #accCape, #accStrawberry, button {
-        animation: none !important;
-        transition: none !important;
-      }
+    @keyframes breathe { 0%,100% { transform: translateY(0px) scaleY(1); } 50% { transform: translateY(-3px) scaleY(1.015); } }
+    @keyframes wagNormal { 0%,100% { transform: rotate(8deg); } 50% { transform: rotate(-10deg); } }
+    @keyframes wagHappy { 0%,100% { transform: rotate(25deg); } 50% { transform: rotate(-35deg); } }
+    @keyframes wagHungry { 0%,100% { transform: rotate(14deg); } 50% { transform: rotate(-18deg); } }
+    @keyframes wagTired { 0%,100% { transform: rotate(4deg); } 50% { transform: rotate(-6deg); } }
+    @keyframes happyBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes nodSlow { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(3deg) translateY(3px); } }
+    @keyframes headTilt { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+    @keyframes sleepFloat { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+    @keyframes earTwitchL { 0%,90%,100% { transform: rotate(0deg); } 95% { transform: rotate(-8deg); } }
+    @keyframes earTwitchR { 0%,92%,100% { transform: rotate(0deg); } 96% { transform: rotate(8deg); } }
+
+    @media (min-width: 900px) {
+      .app { max-width: 1120px; grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+      .hero-card { top: 12px; }
+      .bottom-nav { left: 50%; right: auto; width: 600px; transform: translateX(-50%); }
+      .fab-panel { left: 50%; right: auto; width: 600px; transform: translateX(-50%); }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="app">
     <div class="left">
-      <div class="card">
-        <div class="top-title">
+      <section class="card hero-card" id="heroSection">
+        <div class="hero-head">
           <div>
-            <h1 class="section-title" id="titleName">陪陪 的情侶小屋</h1>
-            <p class="muted">GitHub Pages 可直接用的單檔版本，支援 Supabase 即時同步。</p>
-          </div>
-          <div class="badges">
-            <div class="badge" id="badgeStreak">連續天數 0</div>
-            <div class="badge pink" id="badgeLove">愛心 0</div>
-            <div class="badge" id="badgeSync">本機模式</div>
+            <h1 class="title" id="titleName">狗狗 的情侶小屋</h1>
+            <p class="muted">同步共養，讓愛在這裡成長 ✨</p>
+            <div class="badge-row">
+              <span class="badge" id="badgeStreak">🔥 連續 0 天</span>
+              <span class="badge pink" id="badgeLove">❤️ 好感 0</span>
+              <span class="badge blue" id="badgeSyncStatus">📍 本機</span>
+            </div>
           </div>
         </div>
 
-        <div class="hero">
-          <div class="panel dog-panel">
-            <div class="dog-stage" id="dogStage">
-              <div class="floor"></div>
-              <div class="window-box" id="windowDecor" style="display:none"></div>
-              <div class="star s1" id="star1" style="display:none">✨</div>
-              <div class="star s2" id="star2" style="display:none">⭐</div>
-              <div class="star s3" id="star3" style="display:none">✨</div>
-              <div class="dog-box">
-                <svg id="dogSvg" viewBox="0 0 420 360" width="270" height="270" aria-label="dog">
-                  <defs>
-                    <radialGradient id="furMain" cx="50%" cy="30%" r="75%">
-                      <stop offset="0%" stop-color="#ffe6bd"/>
-                      <stop offset="68%" stop-color="#f4c98d"/>
-                      <stop offset="100%" stop-color="#d9a56e"/>
-                    </radialGradient>
-                    <radialGradient id="furLight" cx="50%" cy="32%" r="70%">
-                      <stop offset="0%" stop-color="#fffdf9"/>
-                      <stop offset="100%" stop-color="#fff0dd"/>
-                    </radialGradient>
-                    <linearGradient id="earGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#c88d5c"/>
-                      <stop offset="100%" stop-color="#9f673f"/>
-                    </linearGradient>
-                    <radialGradient id="innerEar" cx="50%" cy="45%" r="70%">
-                      <stop offset="0%" stop-color="#ffd6c8"/>
-                      <stop offset="100%" stop-color="#efb59e"/>
-                    </radialGradient>
-                    <radialGradient id="noseGrad" cx="50%" cy="35%" r="80%">
-                      <stop offset="0%" stop-color="#6f5042"/>
-                      <stop offset="100%" stop-color="#3d2822"/>
-                    </radialGradient>
-                    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
-                      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="rgba(0,0,0,0.16)"/>
-                    </filter>
-                  </defs>
+        <div class="dog-stage" id="dogStage">
+          <div class="floor"></div>
+          <div class="window-box" id="windowDecor" style="display:none"></div>
+          <div class="star s1" id="star1" style="display:none">✨</div>
+          <div class="star s2" id="star2" style="display:none">⭐</div>
+          <div class="star s3" id="star3" style="display:none">✨</div>
 
-                  <ellipse cx="206" cy="322" rx="94" ry="18" fill="rgba(0,0,0,0.08)" />
+          <div class="dog-wrap" id="dogClickArea">
+            <svg id="dogSvg" viewBox="0 0 420 360" aria-label="dog">
+              <defs>
+                <radialGradient id="furMain" cx="50%" cy="30%" r="75%">
+                  <stop offset="0%" stop-color="#ffe6bd"/>
+                  <stop offset="68%" stop-color="#f4c98d"/>
+                  <stop offset="100%" stop-color="#d9a56e"/>
+                </radialGradient>
+                <radialGradient id="furLight" cx="50%" cy="32%" r="70%">
+                  <stop offset="0%" stop-color="#fffdf9"/>
+                  <stop offset="100%" stop-color="#fff0dd"/>
+                </radialGradient>
+                <linearGradient id="earGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#c88d5c"/>
+                  <stop offset="100%" stop-color="#9f673f"/>
+                </linearGradient>
+                <radialGradient id="innerEar" cx="50%" cy="45%" r="70%">
+                  <stop offset="0%" stop-color="#ffd6c8"/>
+                  <stop offset="100%" stop-color="#efb59e"/>
+                </radialGradient>
+                <radialGradient id="noseGrad" cx="50%" cy="35%" r="80%">
+                  <stop offset="0%" stop-color="#6f5042"/>
+                  <stop offset="100%" stop-color="#3d2822"/>
+                </radialGradient>
+                <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="rgba(0,0,0,0.16)"/>
+                </filter>
+              </defs>
 
-                  <g id="tailGroup" style="transform-origin: 305px 252px;">
-                    <path id="tailShape" d="M304 254 C338 238, 350 266, 322 284 C300 298, 286 281, 294 266 C297 260, 300 257, 304 254 Z" fill="url(#furMain)" />
-                    <path d="M312 257 C330 248, 336 263, 322 274" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="5" stroke-linecap="round"/>
-                  </g>
+              <ellipse cx="206" cy="322" rx="94" ry="18" fill="rgba(0,0,0,0.08)" />
+              <g id="tailGroup">
+                <path id="tailShape" d="M304 254 C338 238, 350 266, 322 284 C300 298, 286 281, 294 266 C297 260, 300 257, 304 254 Z" fill="url(#furMain)" />
+                <path d="M312 257 C330 248, 336 263, 322 274" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="5" stroke-linecap="round"/>
+              </g>
 
-                  <g id="dogBodyGroup" filter="url(#softShadow)">
+              <g id="dogBodyGroup" filter="url(#softShadow)">
+                <g id="earL_grp">
                     <path d="M136 112 C116 72, 122 28, 164 35 C190 39, 197 84, 189 126 C183 155, 151 153, 136 112 Z" fill="url(#earGrad)" />
                     <path d="M156 94 C148 68, 153 48, 171 54 C183 58, 183 84, 177 108 C173 124, 161 119, 156 94 Z" fill="url(#innerEar)" opacity="0.92" />
-
+                </g>
+                <g id="earR_grp">
                     <path d="M274 112 C294 72, 288 28, 246 35 C220 39, 213 84, 221 126 C227 155, 259 153, 274 112 Z" fill="url(#earGrad)" />
                     <path d="M254 94 C262 68, 257 48, 239 54 C227 58, 227 84, 233 108 C237 124, 249 119, 254 94 Z" fill="url(#innerEar)" opacity="0.92" />
+                </g>
 
-                    <ellipse cx="206" cy="164" rx="102" ry="92" fill="url(#furMain)" />
-                    <ellipse cx="206" cy="180" rx="72" ry="60" fill="url(#furLight)" />
+                <ellipse cx="206" cy="164" rx="102" ry="92" fill="url(#furMain)" />
+                <ellipse cx="206" cy="180" rx="72" ry="60" fill="url(#furLight)" />
 
-                    <g id="faceGroup" style="transform-origin: 206px 160px;">
-                      <ellipse cx="206" cy="150" rx="24" ry="18" fill="url(#noseGrad)" />
-                      <g id="eyesOpen">
-                        <ellipse id="eyeL" cx="168" cy="124" rx="10.5" ry="12" fill="#2d201c" />
-                        <ellipse id="eyeR" cx="244" cy="124" rx="10.5" ry="12" fill="#2d201c" />
-                        <ellipse id="eyeGlintL" cx="164" cy="119" rx="3" ry="3.8" fill="#ffffff" opacity="0.95" />
-                        <ellipse id="eyeGlintR" cx="240" cy="119" rx="3" ry="3.8" fill="#ffffff" opacity="0.95" />
-                      </g>
-                      <g id="eyesClosed" style="display:none;">
-                        <path d="M156 126 Q168 118 180 126" stroke="#2d201c" stroke-width="5" stroke-linecap="round" fill="none" />
-                        <path d="M232 126 Q244 118 256 126" stroke="#2d201c" stroke-width="5" stroke-linecap="round" fill="none" />
-                      </g>
-                      <path id="dogMouth" d="M190 174 Q206 190 222 174" stroke="#8d6152" stroke-width="5" stroke-linecap="round" fill="none" />
-                      <path id="dogNoseLine" d="M206 160 L206 173" stroke="#8d6152" stroke-width="4" stroke-linecap="round" />
-                      <ellipse id="tongue" cx="206" cy="184" rx="8" ry="6" fill="#ff8ea1" style="display:none;" />
-                      <ellipse id="blushL" cx="158" cy="158" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
-                      <ellipse id="blushR" cx="254" cy="158" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
-                    </g>
-
-                    <ellipse cx="206" cy="250" rx="88" ry="64" fill="url(#furMain)" />
-                    <ellipse cx="206" cy="260" rx="56" ry="38" fill="url(#furLight)" />
-                    <ellipse cx="164" cy="264" rx="34" ry="22" fill="url(#furLight)" />
-                    <ellipse cx="248" cy="264" rx="34" ry="22" fill="url(#furLight)" />
-                    <circle cx="160" cy="265" r="5.7" fill="#c9876b" />
-                    <circle cx="252" cy="265" r="5.7" fill="#c9876b" />
-                    <circle cx="188" cy="289" r="5.7" fill="#c9876b" />
-                    <circle cx="224" cy="289" r="5.7" fill="#c9876b" />
+                <g id="faceGroup">
+                  <ellipse cx="206" cy="150" rx="24" ry="18" fill="url(#noseGrad)" />
+                  <g id="eyesOpen">
+                    <ellipse id="eyeL" cx="168" cy="124" rx="10.5" ry="12" fill="#2d201c" />
+                    <ellipse id="eyeR" cx="244" cy="124" rx="10.5" ry="12" fill="#2d201c" />
+                    <ellipse id="eyeGlintL" cx="164" cy="119" rx="3" ry="3.8" fill="#ffffff" opacity="0.95" />
+                    <ellipse id="eyeGlintR" cx="240" cy="119" rx="3" ry="3.8" fill="#ffffff" opacity="0.95" />
                   </g>
+                  <g id="eyesClosed" style="display:none;">
+                    <path d="M156 126 Q168 118 180 126" stroke="#2d201c" stroke-width="5" stroke-linecap="round" fill="none" />
+                    <path d="M232 126 Q244 118 256 126" stroke="#2d201c" stroke-width="5" stroke-linecap="round" fill="none" />
+                  </g>
+                  <path id="dogMouth" d="M190 174 Q206 190 222 174" stroke="#8d6152" stroke-width="5" stroke-linecap="round" fill="none" />
+                  <path id="dogNoseLine" d="M206 160 L206 173" stroke="#8d6152" stroke-width="4" stroke-linecap="round" />
+                  <ellipse id="tongue" cx="206" cy="184" rx="8" ry="6" fill="#ff8ea1" style="display:none;" />
+                  <ellipse id="blushL" cx="158" cy="158" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
+                  <ellipse id="blushR" cx="254" cy="158" rx="16" ry="10" fill="rgba(255, 156, 180, 0.14)" />
+                </g>
 
-                  <g id="accBlueScarf" style="display:none"><path d="M148 220 Q206 238 264 220 L248 248 Q206 262 164 248 Z" fill="#7dc8ff" /><circle cx="244" cy="246" r="6" fill="#5eb5f4"/></g>
-                  <g id="accPinkBow" style="display:none"><ellipse cx="180" cy="80" rx="22" ry="14" fill="#ff9fca" /><ellipse cx="210" cy="80" rx="22" ry="14" fill="#ff9fca" /><circle cx="195" cy="80" r="7" fill="#ff79b6" /></g>
-                  <g id="accStarHat" style="display:none"><path d="M166 52 H244 L226 88 H184 Z" fill="#5c6cff" /><circle cx="206" cy="48" r="11" fill="#ffd75e" /></g>
-                  <g id="accCape" style="display:none"><path d="M140 220 Q206 282 272 220 L286 264 Q206 318 126 264 Z" fill="#ff7d8f" opacity="0.9" /></g>
-                  <g id="accStrawberry" style="display:none"><path d="M170 60 Q206 24 242 60 Q232 94 206 100 Q180 94 170 60 Z" fill="#ff5e74" /><path d="M192 44 Q206 29 220 44" stroke="#61a84a" stroke-width="6" stroke-linecap="round" fill="none" /><circle cx="190" cy="72" r="2.4" fill="#fff4c2" /><circle cx="210" cy="80" r="2.4" fill="#fff4c2" /><circle cx="223" cy="66" r="2.4" fill="#fff4c2" /></g>
-                </svg>
-                <div class="dog-name" id="dogName">陪陪</div>
-                <div class="dog-sub">今天看起來好想被摸摸</div>
-              </div>
-            </div>
-            <div class="speech" id="speech">汪～我在，今天也一起度過吧。</div>
-          </div>
+                <ellipse cx="206" cy="250" rx="88" ry="64" fill="url(#furMain)" />
+                <ellipse cx="206" cy="260" rx="56" ry="38" fill="url(#furLight)" />
+                <ellipse cx="164" cy="264" rx="34" ry="22" fill="url(#furLight)" />
+                <ellipse cx="248" cy="264" rx="34" ry="22" fill="url(#furLight)" />
+              </g>
 
-          <div class="panel">
-            <div class="card" style="padding:18px;">
-              <label>現在來陪牠的是</label>
-              <div class="row">
-                <button id="btnVisitMe">你</button>
-                <button class="secondary" id="btnVisitPartner">女友</button>
-              </div>
-              <div class="status-line" id="todayStatus">今天還沒有人來找牠。</div>
-            </div>
-
-            <div class="card" style="padding:18px;">
-              <div class="progress-block">
-                <div>
-                  <div class="progress-label"><span>心情</span><span id="moodText">72/100</span></div>
-                  <div class="progress-track"><div class="progress-fill" id="moodBar"></div></div>
-                </div>
-                <div>
-                  <div class="progress-label"><span>體力</span><span id="energyText">68/100</span></div>
-                  <div class="progress-track"><div class="progress-fill" id="energyBar"></div></div>
-                </div>
-                <div>
-                  <div class="progress-label"><span>飢餓</span><span id="hungerText">45/100</span></div>
-                  <div class="progress-track"><div class="progress-fill" id="hungerBar"></div></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="btn-grid">
-              <button id="btnPet">摸摸</button>
-              <button class="soft" id="btnFeed">餵食</button>
-              <button class="secondary" id="btnSleep">睡覺</button>
-              <button class="blue" id="btnDress">換裝</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <h2 class="section-title" style="font-size:22px;">留一句話</h2>
-          <p class="muted" style="margin-bottom:14px;">給對方，也給陪陪留下一點今天的心意。</p>
-          <div class="settings-grid">
-            <div>
-              <input id="noteInput" placeholder="例如：今天辛苦了，記得吃飯。" />
-            </div>
-            <div><button class="full" id="btnSaveNote">送給對方和陪陪</button></div>
-            <div class="list" id="noteList"></div>
+              <g id="accBlueScarf" style="display:none"><path d="M148 220 Q206 238 264 220 L248 248 Q206 262 164 248 Z" fill="#7dc8ff" /><circle cx="244" cy="246" r="6" fill="#5eb5f4"/></g>
+              <g id="accPinkBow" style="display:none"><ellipse cx="180" cy="80" rx="22" ry="14" fill="#ff9fca" /><ellipse cx="210" cy="80" rx="22" ry="14" fill="#ff9fca" /><circle cx="195" cy="80" r="7" fill="#ff79b6" /></g>
+              <g id="accStarHat" style="display:none"><path d="M166 52 H244 L226 88 H184 Z" fill="#5c6cff" /><circle cx="206" cy="48" r="11" fill="#ffd75e" /></g>
+              <g id="accCape" style="display:none"><path d="M140 220 Q206 282 272 220 L286 264 Q206 318 126 264 Z" fill="#ff7d8f" opacity="0.9" /></g>
+              <g id="accStrawberry" style="display:none"><path d="M170 60 Q206 24 242 60 Q232 94 206 100 Q180 94 170 60 Z" fill="#ff5e74" /><path d="M192 44 Q206 29 220 44" stroke="#61a84a" stroke-width="6" stroke-linecap="round" fill="none" /><circle cx="190" cy="72" r="2.4" fill="#fff4c2" /><circle cx="210" cy="80" r="2.4" fill="#fff4c2" /><circle cx="223" cy="66" r="2.4" fill="#fff4c2" /></g>
+            </svg>
+            <div class="dog-name" id="dogName">陪陪</div>
+            <div class="dog-sub" id="dogSub">摸摸我，我會很開心喔！</div>
           </div>
         </div>
 
-        <div class="card">
-          <h2 class="section-title" style="font-size:22px;">今日心情與紀錄</h2>
-          <p class="muted" style="margin-bottom:14px;">你們可以把今天的狀態和一句小日記記下來。</p>
-          <div class="settings-grid">
-            <div>
-              <label>今天的心情</label>
-              <div class="mood-row" id="moodButtons"></div>
-            </div>
-            <div><textarea id="diaryInput" placeholder="寫一句今天想記下來的話。"></textarea></div>
-            <div><button class="full" id="btnSaveDiary">存下今天</button></div>
-            <div class="list" id="diaryList"></div>
+        <div class="status-pill" id="todayStatus">👋 歡迎回到你們的小屋</div>
+        <div class="speech" id="speech">汪！我也在想你耶。</div>
+
+        <div class="quick-grid">
+          <button id="btnVisitMe">你來了</button>
+          <button id="btnVisitPartner" class="secondary">另一半</button>
+          <button id="btnPet">摸摸</button>
+          <button id="btnFeed" class="soft">餵食</button>
+          <button id="btnSleep" class="secondary">睡覺</button>
+          <button id="btnDress" class="blue">換裝</button>
+          <button id="btnPlay" class="soft">玩耍</button>
+          <button id="btnWalk" class="secondary">漫步</button>
+        </div>
+      </section>
+
+      <section class="card section-card" id="statusSection">
+        <h2 class="section-title">📊 狗狗狀態</h2>
+        <div class="progress-card">
+          <div class="progress-row">
+            <div class="progress-label"><span>心情</span><span id="moodText">72/100</span></div>
+            <div class="progress-track"><div class="progress-fill" id="moodBar"></div></div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-label"><span>體力</span><span id="energyText">68/100</span></div>
+            <div class="progress-track"><div class="progress-fill" id="energyBar"></div></div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-label"><span>飽食</span><span id="hungerText">45/100</span></div>
+            <div class="progress-track"><div class="progress-fill" id="hungerBar"></div></div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section class="card section-card" id="noteSection">
+        <h2 class="section-title">💌 給彼此的話</h2>
+        <input id="noteInput" placeholder="寫點什麼給對方和陪陪吧..." />
+        <button class="full" id="btnSaveNote">傳送心意</button>
+        <div class="list" id="noteList"></div>
+      </section>
+
+      <section class="card section-card" id="diarySection">
+        <h2 class="section-title">📝 我們的日記</h2>
+        <div>
+          <label>今日心情</label>
+          <div class="chip-row" id="moodButtons"></div>
+        </div>
+        <textarea id="diaryInput" placeholder="這是一個值得紀念的瞬間嗎？"></textarea>
+        <button class="full" id="btnSaveDiary">存入回憶</button>
+        <div class="list" id="diaryList"></div>
+      </section>
     </div>
 
     <div class="right">
-      <div class="card">
-        <h2 class="section-title" style="font-size:22px;">小屋設定</h2>
-        <p class="muted" style="margin-bottom:14px;">名字都可以改，這隻狗就是你們自己的。</p>
-        <div class="settings-grid">
-          <div>
-            <label>你的名字</label>
-            <input id="meNameInput" />
-          </div>
-          <div>
-            <label>對方名字</label>
-            <input id="partnerNameInput" />
-          </div>
-          <div>
-            <label>狗狗名字</label>
-            <input id="petNameInput" />
-          </div>
-          <div>
-            <label>房間背景</label>
-            <div class="choice-row" id="backgroundButtons"></div>
-          </div>
-          <div>
-            <label>紀念日</label>
-            <input id="anniversaryInput" type="date" />
-            <div class="small" id="anniversaryText">尚未設定</div>
-          </div>
-          <div><button class="full" id="btnSaveNow">儲存現在的小屋</button></div>
+      <section class="card section-card" id="settingsSection">
+        <h2 class="section-title">⚙️ 小屋設定</h2>
+        <div>
+          <label>你的稱呼</label>
+          <input id="meNameInput" placeholder="例如：爸爸" />
         </div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title" style="font-size:22px;">Supabase 即時同步</h2>
-        <p class="muted" style="margin-bottom:14px;">GitHub Pages 可以直接連 Supabase，不用 React build。</p>
-        <div class="settings-grid">
-          <div>
-            <label>Supabase URL</label>
-            <input id="supabaseUrlInput" placeholder="https://zdjdjzbszgriyjikamoy.supabase.co" />
-          </div>
-          <div>
-            <label>Publishable / anon key</label>
-            <input id="supabaseKeyInput" placeholder="sb_publishable_FzxPcGMJFZoDO96GtpzVzw_Cc67a9Ok" />
-          </div>
-          <div>
-            <label>房間代碼</label>
-            <div class="row">
-              <input id="roomInput" />
-              <button id="btnSwitchRoom">進入</button>
-            </div>
-          </div>
-          <div>
-            <label>房間連結</label>
-            <input id="shareLinkInput" readonly />
-          </div>
-          <div class="row">
-            <button class="secondary" style="flex:1" id="btnCopyLink">複製連結</button>
-            <button style="flex:1" id="btnToggleSync">開啟同步</button>
-          </div>
-          <div class="sync-box" id="syncStatusBox">同步狀態：本機模式</div>
+        <div>
+          <label>另一半稱呼</label>
+          <input id="partnerNameInput" placeholder="例如：媽媽" />
         </div>
-      </div>
+        <div>
+          <label>狗狗名字</label>
+          <input id="petNameInput" />
+        </div>
+        <div>
+          <label>房間風格</label>
+          <div class="chip-row" id="backgroundButtons"></div>
+        </div>
+        <div>
+          <label>紀念日 (用於計算相處天數)</label>
+          <input id="anniversaryInput" type="date" />
+          <div class="small" id="anniversaryText">相伴天數計算中...</div>
+        </div>
+        <button class="full" id="btnSaveNow">套用設定</button>
+      </section>
 
-      <div class="card">
-        <h2 class="section-title" style="font-size:22px;">小檔案</h2>
-        <div class="settings-grid">
-          <div class="stat-row"><span>總來訪</span><span id="statVisits">0</span></div>
-          <div class="stat-row"><span>摸摸次數</span><span id="statPets">0</span></div>
+      <section class="card section-card" id="syncSection">
+        <h2 class="section-title">☁️ 雲端同步</h2>
+        <div class="row">
+          <input id="roomInput" placeholder="房間代碼" />
+          <button id="btnSwitchRoom">切換</button>
+        </div>
+        <div class="row">
+          <input id="shareLinkInput" readonly />
+          <button class="secondary" id="btnCopyLink">複製</button>
+        </div>
+        <button id="btnToggleSync" class="full">關閉同步</button>
+        <div class="sync-box" id="syncStatusBox">準備就緒</div>
+      </section>
+
+      <section class="card section-card" id="profileSection">
+        <h2 class="section-title">🏆 成長腳印</h2>
+        <div class="stats-grid">
+          <div class="stat-row"><span>總來訪次數</span><span id="statVisits">0</span></div>
+          <div class="stat-row"><span>累積摸摸</span><span id="statPets">0</span></div>
           <div class="stat-row"><span>餵食次數</span><span id="statFeeds">0</span></div>
-          <div class="stat-row"><span>睡覺次數</span><span id="statSleeps">0</span></div>
+          <div class="stat-row"><span>安穩睡覺</span><span id="statSleeps">0</span></div>
           <div class="sync-box" id="todayStateBox">今天還沒有人來找牠。</div>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <p class="footer-tip">提醒：可以公開放的是 publishable / anon key，不要把 secret key 放進前端頁面。</p>
-        <div style="margin-top:14px;"><button class="full secondary" id="btnResetRoom">重設這個房間</button></div>
-      </div>
+      <section class="card">
+         <button class="full secondary" id="btnResetRoom">重設這個房間</button>
+      </section>
     </div>
   </div>
 
+  <div class="fab-panel" id="fabPanel">
+    <div class="fab-grid">
+      <button id="miniPetBtn">摸摸</button>
+      <button id="miniFeedBtn" class="soft">餵食</button>
+      <button id="miniSleepBtn" class="secondary">睡覺</button>
+      <button id="miniExpandBtn" class="blue">展開</button>
+    </div>
+  </div>
+
+  <div class="mini-pet" id="miniPet">
+    <span class="mini-badge" id="miniMoodBadge">!</span>
+    <svg viewBox="0 0 420 360">
+      <ellipse cx="206" cy="322" rx="94" ry="18" fill="rgba(0,0,0,0.08)" />
+      <path d="M136 112 C116 72, 122 28, 164 35 C190 39, 197 84, 189 126 C183 155, 151 153, 136 112 Z" fill="#b97b49" />
+      <path d="M274 112 C294 72, 288 28, 246 35 C220 39, 213 84, 221 126 C227 155, 259 153, 274 112 Z" fill="#b97b49" />
+      <ellipse cx="206" cy="164" rx="102" ry="92" fill="#f4c98d" />
+      <ellipse cx="206" cy="180" rx="72" ry="60" fill="#fff0dd" />
+      <ellipse cx="168" cy="124" rx="10.5" ry="12" fill="#2d201c" />
+      <ellipse cx="244" cy="124" rx="10.5" ry="12" fill="#2d201c" />
+      <ellipse cx="206" cy="150" rx="24" ry="18" fill="#4a332c" />
+    </svg>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-target="heroSection"><span class="nav-emoji">🐶</span><span>小屋</span></button>
+    <button class="nav-btn" data-target="noteSection"><span class="nav-emoji">💌</span><span>留言</span></button>
+    <button class="nav-btn" data-target="diarySection"><span class="nav-emoji">📝</span><span>日記</span></button>
+    <button class="nav-btn" data-target="profileSection"><span class="nav-emoji">📈</span><span>成長</span></button>
+    <button class="nav-btn" data-target="settingsSection"><span class="nav-emoji">⚙️</span><span>設定</span></button>
+  </nav>
+
   <script>
-    const STORAGE_PREFIX = "peipei-dog-room-";
-    const SUPABASE_CONFIG_KEY = "peipei-supabase-config-v2";
-    const ACCESSORIES = ["藍色領巾", "粉色蝴蝶結", "星星帽", "小披風", "草莓帽", "無配件"];
+    const CONFIG = {
+      supabaseUrl: "https://zdjdjzbszgriyjikamoy.supabase.co",
+      supabaseKey: "sb_publishable_FzxPcGMJFZoDO96GtpzVzw_Cc67a9Ok",
+      storagePrefix: "peipei-dog-v3-",
+      roomKey: "peipei-room-id",
+      defaultRoom: "sweet-home"
+    };
+
     const MOODS = ["開心", "普通", "累了", "煩躁", "想抱抱"];
     const BACKGROUNDS = ["暖暖房間", "窗邊午後", "星空小窩"];
+    const ACCESSORIES = ["藍色領巾", "粉色蝴蝶結", "星星帽", "小披風", "草莓帽", "無配件"];
 
-    const defaultState = {
-      roomId: "sweet-home",
-      currentUser: "你",
+    let state = {
+      roomId: CONFIG.defaultRoom,
+      currentUser: "我",
       petName: "陪陪",
-      petMood: 72,
-      petEnergy: 68,
-      petHunger: 45,
-      petLove: 18,
-      lastActionText: "汪～我在，今天也一起度過吧。",
+      petMood: 80,
+      petEnergy: 80,
+      petHunger: 20,
+      petLove: 0,
+      lastActionText: "汪！見到你真好。",
+      meName: "我",
+      partnerName: "另一半",
       meVisitedToday: false,
       partnerVisitedToday: false,
       lastVisitDate: "",
-      meName: "你",
-      partnerName: "女友",
       notes: [],
-      todayMood: "普通",
+      diary: [],
+      todayMood: "開心",
       anniversary: "",
       accessory: "藍色領巾",
+      background: "暖暖房間",
       streak: 0,
       totalPets: 0,
       totalFeeds: 0,
       totalSleeps: 0,
       totalVisits: 0,
-      diary: [],
-      background: "暖暖房間",
       updatedAt: null,
-      updatedBy: "system"
+      updatedBy: "system",
+      dogState: "normal"
     };
 
-    const defaultConfig = {
-      supabaseUrl: "",
-      supabaseKey: "",
-      syncEnabled: false
-    };
+    let client = null, channel = null, pushing = false;
 
-    let state = { ...defaultState };
-    let config = { ...defaultConfig };
-    let client = null;
-    let channel = null;
-    let isSyncing = false;
-    let pushing = false;
+    // --- Core Logic ---
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+    function todayStr() { return new Date().toISOString().split('T')[0]; }
+    function safeId(v) { return (v || "").toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 32); }
 
-    function safeRoomId(v) {
-      return (v || "sweet-home").toLowerCase().replace(/[^a-z0-9-_]/g, "-").slice(0, 36) || "sweet-home";
+    function spawnParticles(emoji, x, y) {
+        for(let i=0; i<8; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.textContent = emoji;
+            const tx = (Math.random() - 0.5) * 200;
+            const ty = -Math.random() * 200 - 50;
+            const dur = 0.6 + Math.random() * 0.4;
+            p.style.setProperty('--tx', `${tx}px`);
+            p.style.setProperty('--ty', `${ty}px`);
+            p.style.setProperty('--duration', `${dur}s`);
+            p.style.left = `${x}px`;
+            p.style.top = `${y}px`;
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), dur * 1000);
+        }
     }
 
-    function todayStr() {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    }
+    function haptic() { if(window.navigator.vibrate) window.navigator.vibrate(15); }
 
-    function clamp(num, min, max) {
-      return Math.max(min, Math.min(max, num));
-    }
+    function updateDogVisuals() {
+        const hero = document.getElementById('heroSection');
+        hero.classList.remove('state-normal', 'state-happy', 'state-sleep', 'state-tired', 'state-hungry', 'state-pet');
+        
+        let ds = "normal";
+        if(state.petEnergy < 30) ds = "sleep";
+        else if(state.petEnergy < 50) ds = "tired";
+        else if(state.petHunger > 70) ds = "hungry";
+        else if(state.petMood > 85) ds = "happy";
+        
+        state.dogState = ds;
+        hero.classList.add(`state-${ds}`);
 
-    function getStorageKey(roomId) {
-      return `${STORAGE_PREFIX}${safeRoomId(roomId)}`;
-    }
+        document.getElementById('eyesOpen').style.display = ds === "sleep" ? "none" : "block";
+        document.getElementById('eyesClosed').style.display = ds === "sleep" ? "block" : "none";
+        document.getElementById('tongue').style.display = (ds === "happy" || ds === "pet") ? "block" : "none";
+        
+        const sub = document.getElementById('dogSub');
+        if(ds === "sleep") sub.textContent = "💤 呼嚕呼嚕...睡得真香";
+        else if(ds === "hungry") sub.textContent = "🦴 肚子在咕嚕叫了...";
+        else if(ds === "happy") sub.textContent = "💖 我現在超級愛你們！";
+        else sub.textContent = "摸摸我，我會很開心喔！";
 
-    function saveLocalRoom() {
-      localStorage.setItem(getStorageKey(state.roomId), JSON.stringify(state));
-    }
+        ["accBlueScarf","accPinkBow","accStarHat","accCape","accStrawberry"].forEach(id => {
+            document.getElementById(id).style.display = (state.accessory === document.getElementById(id).id.replace('acc','').replace('Scarf','領巾').replace('Bow','蝴蝶結').replace('Hat','帽').replace('Cape','小披風').replace('Strawberry','草莓帽')) ? 'block' : 'none';
+        });
+        // Fixing accessory display logic
+        document.getElementById('accBlueScarf').style.display = state.accessory === "藍色領巾" ? 'block' : 'none';
+        document.getElementById('accPinkBow').style.display = state.accessory === "粉色蝴蝶結" ? 'block' : 'none';
+        document.getElementById('accStarHat').style.display = state.accessory === "星星帽" ? 'block' : 'none';
+        document.getElementById('accCape').style.display = state.accessory === "小披風" ? 'block' : 'none';
+        document.getElementById('accStrawberry').style.display = state.accessory === "草莓帽" ? 'block' : 'none';
 
-    function loadLocalRoom(roomId) {
-      const raw = localStorage.getItem(getStorageKey(roomId));
-      if (!raw) {
-        state = { ...defaultState, roomId: safeRoomId(roomId) };
-        saveLocalRoom();
-        return;
-      }
-      try {
-        state = { ...defaultState, ...JSON.parse(raw), roomId: safeRoomId(roomId) };
-      } catch {
-        state = { ...defaultState, roomId: safeRoomId(roomId) };
-        saveLocalRoom();
-      }
-    }
-
-    function saveConfig() {
-      localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(config));
-    }
-
-    function loadConfig() {
-      const raw = localStorage.getItem(SUPABASE_CONFIG_KEY);
-      if (!raw) return;
-      try {
-        config = { ...defaultConfig, ...JSON.parse(raw) };
-      } catch {}
-    }
-
-    function getStatusText() {
-      if (state.meVisitedToday && state.partnerVisitedToday) return "今天你們都有來，狗狗超滿足。";
-      if (state.meVisitedToday) return `今天 ${state.meName} 有來陪牠。`;
-      if (state.partnerVisitedToday) return `今天 ${state.partnerName} 有來陪牠。`;
-      return "今天還沒有人來找牠。";
-    }
-
-    function getReaction(action, currentUser, todayMood) {
-      const userLabel = currentUser || "你";
-      const moodMap = {
-        開心: [`汪！${userLabel} 一來我就更開心了。`, `今天感覺亮亮的，想和 ${userLabel} 多待一下。`],
-        普通: [`我在這裡慢慢陪著 ${userLabel}。`, `${userLabel} 來了就很好。`],
-        累了: [`辛苦了，${userLabel} 先坐一下，我陪你。`, `今天很累的話，就靠著我休息一下。`],
-        煩躁: [`沒關係，今天可以不用那麼厲害。`, `把煩的事先放旁邊，先摸摸我。`],
-        想抱抱: [`汪…給你一個小小抱抱。`, `今天是抱抱模式，我會黏著 ${userLabel}。`],
-      };
-      const actionMap = {
-        pet: [`${userLabel} 摸摸我，我尾巴在搖。`, `再摸一下，我喜歡。`],
-        feed: [`這個好吃！我會記得 ${userLabel}。`, `吃飽就比較有力氣陪你們了。`],
-        sleep: [`我要先睡一下，醒來再陪 ${userLabel}。`, `晚安模式啟動，今天也辛苦了。`],
-        visit: moodMap[todayMood] || moodMap["普通"],
-        note: [`我會幫你把心意收好。`, `這句話暖暖的，我幫你保存了。`],
-        dress: [`新造型耶，我要炫耀一下。`, `這個配件今天很適合我。`],
-        mood: moodMap[todayMood] || moodMap["普通"],
-        save: [`我有把現在的樣子記住囉。`, `小屋已經好好存起來了。`],
-        sync: [`我已經連上雲端了，可以一起生活囉。`, `同步開啟，我會記得你們兩個的互動。`],
-      };
-      const arr = actionMap[action] || moodMap["普通"];
-      return arr[Math.floor(Math.random() * arr.length)];
-    }
-
-    function setSyncStatus(text) {
-      document.getElementById("badgeSync").textContent = text;
-      document.getElementById("syncStatusBox").textContent = `同步狀態：${text}`;
-    }
-
-    function getAnniversaryText() {
-      if (!state.anniversary) return "尚未設定";
-      const today = new Date();
-      const ann = new Date(state.anniversary);
-      if (Number.isNaN(ann.getTime())) return "尚未設定";
-      const diff = Math.floor((today - ann) / (1000 * 60 * 60 * 24));
-      return `已經一起 ${diff >= 0 ? diff : 0} 天`;
-    }
-
-    function getShareLink() {
-      return `${window.location.origin}${window.location.pathname}?room=${safeRoomId(state.roomId)}`;
-    }
-
-    function applyDailyReset() {
-      const today = todayStr();
-      if (!state.lastVisitDate) {
-        state.lastVisitDate = today;
-        return;
-      }
-      if (state.lastVisitDate !== today) {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        const yesterday = `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,"0")}-${String(y.getDate()).padStart(2,"0")}`;
-        state.streak = state.lastVisitDate === yesterday ? state.streak + 1 : 1;
-        state.meVisitedToday = false;
-        state.partnerVisitedToday = false;
-        state.lastVisitDate = today;
-        state.petMood = clamp(state.petMood - 8, 0, 100);
-        state.petEnergy = clamp(state.petEnergy - 6, 0, 100);
-        state.petHunger = clamp(state.petHunger + 10, 0, 100);
-        state.lastActionText = "新的一天開始了，我在等你們。";
-      }
-    }
-
-    function updateDogVisual() {
-      const eyeY = state.petMood < 35 ? 104 : 100;
-      document.getElementById("eyeL").setAttribute("cy", eyeY);
-      document.getElementById("eyeR").setAttribute("cy", eyeY);
-      document.getElementById("eyeGlintL").setAttribute("cy", eyeY - 2);
-      document.getElementById("eyeGlintR").setAttribute("cy", eyeY - 2);
-      const mouth = state.petMood >= 70 ? "M150 133 Q160 143 170 133" : state.petMood >= 45 ? "M150 135 Q160 139 170 135" : "M150 141 Q160 133 170 141";
-      document.getElementById("dogMouth").setAttribute("d", mouth);
-      const blushOpacity = state.petMood >= 70 ? 0.18 : 0.1;
-      document.getElementById("blushL").setAttribute("fill", `rgba(255, 156, 180, ${blushOpacity})`);
-      document.getElementById("blushR").setAttribute("fill", `rgba(255, 156, 180, ${blushOpacity})`);
-
-      ["accBlueScarf","accPinkBow","accStarHat","accCape","accStrawberry"].forEach(id => {
-        document.getElementById(id).style.display = "none";
-      });
-      if (state.accessory === "藍色領巾") document.getElementById("accBlueScarf").style.display = "block";
-      if (state.accessory === "粉色蝴蝶結") document.getElementById("accPinkBow").style.display = "block";
-      if (state.accessory === "星星帽") document.getElementById("accStarHat").style.display = "block";
-      if (state.accessory === "小披風") document.getElementById("accCape").style.display = "block";
-      if (state.accessory === "草莓帽") document.getElementById("accStrawberry").style.display = "block";
-
-      const stage = document.getElementById("dogStage");
-      stage.className = "dog-stage";
-      document.getElementById("windowDecor").style.display = "none";
-      document.getElementById("star1").style.display = "none";
-      document.getElementById("star2").style.display = "none";
-      document.getElementById("star3").style.display = "none";
-      if (state.background === "窗邊午後") {
-        stage.classList.add("window");
-        document.getElementById("windowDecor").style.display = "block";
-      }
-      if (state.background === "星空小窩") {
-        stage.classList.add("night");
-        document.getElementById("star1").style.display = "block";
-        document.getElementById("star2").style.display = "block";
-        document.getElementById("star3").style.display = "block";
-      }
-    }
-
-    function renderMoodButtons() {
-      const wrap = document.getElementById("moodButtons");
-      wrap.innerHTML = "";
-      MOODS.forEach(m => {
-        const btn = document.createElement("button");
-        btn.className = `pill ${state.todayMood === m ? "active" : ""}`;
-        btn.textContent = m;
-        btn.onclick = () => commitState(prev => ({ ...prev, todayMood: m, lastActionText: getReaction("mood", prev.currentUser, m) }));
-        wrap.appendChild(btn);
-      });
-    }
-
-    function renderBackgroundButtons() {
-      const wrap = document.getElementById("backgroundButtons");
-      wrap.innerHTML = "";
-      BACKGROUNDS.forEach(bg => {
-        const btn = document.createElement("button");
-        btn.className = `pill ${state.background === bg ? "active" : ""}`;
-        btn.textContent = bg;
-        btn.onclick = () => commitState(prev => ({ ...prev, background: bg }));
-        wrap.appendChild(btn);
-      });
-    }
-
-    function renderNotes() {
-      const list = document.getElementById("noteList");
-      list.innerHTML = "";
-      if (!state.notes.length) {
-        list.innerHTML = '<div class="empty">還沒有留言。</div>';
-        return;
-      }
-      state.notes.forEach(note => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<div class="item-top"><span class="tag pink">${escapeHtml(note.from)}</span></div><div>${escapeHtml(note.text)}</div><div class="small">${escapeHtml(note.time)}</div>`;
-        list.appendChild(div);
-      });
-    }
-
-    function renderDiary() {
-      const list = document.getElementById("diaryList");
-      list.innerHTML = "";
-      if (!state.diary.length) {
-        list.innerHTML = '<div class="empty">還沒有紀錄。</div>';
-        return;
-      }
-      state.diary.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item warm";
-        div.innerHTML = `<div class="item-top"><span class="tag">${escapeHtml(item.by)}</span><span class="tag gray">${escapeHtml(item.mood)}</span></div><div>${escapeHtml(item.text)}</div><div class="small">${escapeHtml(item.time)}</div>`;
-        list.appendChild(div);
-      });
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        const stage = document.getElementById('dogStage');
+        stage.className = "dog-stage";
+        document.getElementById('windowDecor').style.display = 'none';
+        ['star1','star2','star3'].forEach(s => document.getElementById(s).style.display = 'none');
+        
+        if(state.background === "窗邊午後") {
+            stage.classList.add('window');
+            document.getElementById('windowDecor').style.display = 'block';
+        } else if(state.background === "星空小窩") {
+            stage.classList.add('night');
+            ['star1','star2','star3'].forEach(s => document.getElementById(s).style.display = 'block');
+        }
     }
 
     function render() {
-      document.getElementById("titleName").textContent = `${state.petName} 的情侶小屋`;
-      document.getElementById("dogName").textContent = state.petName;
-      document.getElementById("speech").textContent = state.lastActionText;
-      document.getElementById("badgeStreak").textContent = `連續天數 ${state.streak}`;
-      document.getElementById("badgeLove").textContent = `愛心 ${state.petLove}`;
-      document.getElementById("todayStatus").textContent = getStatusText();
-      document.getElementById("todayStateBox").textContent = getStatusText();
+        document.getElementById('titleName').textContent = `${state.petName} 的情侶小屋`;
+        document.getElementById('dogName').textContent = state.petName;
+        document.getElementById('speech').textContent = state.lastActionText;
+        document.getElementById('badgeStreak').textContent = `🔥 連續 ${state.streak} 天`;
+        document.getElementById('badgeLove').textContent = `❤️ 好感 ${state.petLove}`;
+        document.getElementById('moodText').textContent = `${state.petMood}/100`;
+        document.getElementById('energyText').textContent = `${state.petEnergy}/100`;
+        document.getElementById('hungerText').textContent = `${state.petHunger}/100`;
+        document.getElementById('moodBar').style.width = `${state.petMood}%`;
+        document.getElementById('energyBar').style.width = `${state.petEnergy}%`;
+        document.getElementById('hungerBar').style.width = `${state.petHunger}%`;
+        
+        document.getElementById('statVisits').textContent = state.totalVisits;
+        document.getElementById('statPets').textContent = state.totalPets;
+        document.getElementById('statFeeds').textContent = state.totalFeeds;
+        document.getElementById('statSleeps').textContent = state.totalSleeps;
 
-      document.getElementById("moodText").textContent = `${state.petMood}/100`;
-      document.getElementById("energyText").textContent = `${state.petEnergy}/100`;
-      document.getElementById("hungerText").textContent = `${state.petHunger}/100`;
-      document.getElementById("moodBar").style.width = `${state.petMood}%`;
-      document.getElementById("energyBar").style.width = `${state.petEnergy}%`;
-      document.getElementById("hungerBar").style.width = `${state.petHunger}%`;
-
-      document.getElementById("btnVisitMe").textContent = state.meName;
-      document.getElementById("btnVisitPartner").textContent = state.partnerName;
-      document.getElementById("meNameInput").value = state.meName;
-      document.getElementById("partnerNameInput").value = state.partnerName;
-      document.getElementById("petNameInput").value = state.petName;
-      document.getElementById("anniversaryInput").value = state.anniversary || "";
-      document.getElementById("anniversaryText").textContent = getAnniversaryText();
-      document.getElementById("roomInput").value = state.roomId;
-      document.getElementById("shareLinkInput").value = getShareLink();
-      document.getElementById("supabaseUrlInput").value = config.supabaseUrl || "";
-      document.getElementById("supabaseKeyInput").value = config.supabaseKey || "";
-      document.getElementById("btnToggleSync").textContent = config.syncEnabled ? "關閉同步" : "開啟同步";
-      document.getElementById("statVisits").textContent = state.totalVisits;
-      document.getElementById("statPets").textContent = state.totalPets;
-      document.getElementById("statFeeds").textContent = state.totalFeeds;
-      document.getElementById("statSleeps").textContent = state.totalSleeps;
-
-      renderMoodButtons();
-      renderBackgroundButtons();
-      renderNotes();
-      renderDiary();
-      updateDogVisual();
-    }
-
-    async function ensureRemoteRoom() {
-      const { data, error } = await client.from("pet_rooms").select("room_id,state").eq("room_id", state.roomId).maybeSingle();
-      if (error) throw error;
-      if (!data) {
-        const payload = { ...state, updatedAt: new Date().toISOString(), updatedBy: state.currentUser || "system" };
-        const { error: insertError } = await client.from("pet_rooms").upsert({ room_id: state.roomId, state: payload });
-        if (insertError) throw insertError;
-        state = payload;
-        saveLocalRoom();
-        return;
-      }
-      state = { ...defaultState, ...(data.state || {}), roomId: state.roomId };
-      saveLocalRoom();
-      render();
-    }
-
-    async function pushStateToRemote(nextState) {
-      if (!config.syncEnabled || !client) return;
-      try {
-        isSyncing = true;
-        pushing = true;
-        setSyncStatus("同步中...");
-        const payload = { ...nextState, updatedAt: new Date().toISOString(), updatedBy: nextState.currentUser || "system" };
-        const { error } = await client.from("pet_rooms").upsert({ room_id: nextState.roomId, state: payload });
-        if (error) throw error;
-        state = payload;
-        saveLocalRoom();
-        setSyncStatus("雲端已同步");
-        render();
-      } catch (e) {
-        setSyncStatus(`同步失敗：${e.message}`);
-      } finally {
-        pushing = false;
-        isSyncing = false;
-      }
-    }
-
-    async function connectSupabase() {
-      if (!config.supabaseUrl || !config.supabaseKey || !config.syncEnabled) {
-        setSyncStatus("本機模式");
-        return;
-      }
-      try {
-        if (channel && client) {
-          await client.removeChannel(channel);
-          channel = null;
+        document.getElementById('meNameInput').value = state.meName;
+        document.getElementById('partnerNameInput').value = state.partnerName;
+        document.getElementById('petNameInput').value = state.petName;
+        document.getElementById('roomInput').value = state.roomId;
+        document.getElementById('shareLinkInput').value = `${window.location.origin}${window.location.pathname}?room=${state.roomId}`;
+        
+        const ann = new Date(state.anniversary);
+        if(!isNaN(ann.getTime())) {
+            const diff = Math.floor((new Date() - ann) / (1000 * 60 * 60 * 24));
+            document.getElementById('anniversaryText').textContent = `我們已經相伴 ${diff >= 0 ? diff : 0} 天了！`;
+            document.getElementById('anniversaryInput').value = state.anniversary;
         }
-        client = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
-        await ensureRemoteRoom();
-        channel = client
-          .channel(`room-${state.roomId}`)
-          .on("postgres_changes", { event: "*", schema: "public", table: "pet_rooms", filter: `room_id=eq.${state.roomId}` }, (payload) => {
-            if (pushing) return;
-            const nextRemote = payload && payload.new && payload.new.state;
-            if (!nextRemote) return;
-            state = { ...defaultState, ...nextRemote, roomId: state.roomId };
-            saveLocalRoom();
-            setSyncStatus(`收到雲端更新：${state.updatedBy || "另一端"}`);
+
+        renderList('noteList', state.notes, 'note');
+        renderList('diaryList', state.diary, 'diary');
+        renderChips('moodButtons', MOODS, state.todayMood, (m) => commit({ todayMood: m }));
+        renderChips('backgroundButtons', BACKGROUNDS, state.background, (b) => commit({ background: b }));
+
+        updateDogVisuals();
+    }
+
+    function renderList(id, items, type) {
+        const wrap = document.getElementById(id);
+        wrap.innerHTML = items.length ? '' : '<div class="empty">還沒有任何紀錄喔。</div>';
+        items.forEach(it => {
+            const div = document.createElement('div');
+            div.className = `item ${type === 'diary' ? 'warm' : ''}`;
+            if(type === 'note') {
+                div.innerHTML = `<div class="item-top"><span class="tag pink">${it.from}</span></div><div>${it.text}</div><div class="small">${it.time}</div>`;
+            } else {
+                div.innerHTML = `<div class="item-top"><span class="tag">${it.by}</span><span class="tag gray">${it.mood}</span></div><div>${it.text}</div><div class="small">${it.time}</div>`;
+            }
+            wrap.appendChild(div);
+        });
+    }
+
+    function renderChips(id, opts, active, cb) {
+        const wrap = document.getElementById(id);
+        wrap.innerHTML = '';
+        opts.forEach(o => {
+            const btn = document.createElement('button');
+            btn.className = `pill ${active === o ? 'active' : ''}`;
+            btn.textContent = o;
+            btn.onclick = () => { haptic(); cb(o); };
+            wrap.appendChild(btn);
+        });
+    }
+
+    // --- State & Sync ---
+    async function commit(updates) {
+        state = { ...state, ...updates, updatedAt: new Date().toISOString(), updatedBy: state.currentUser };
+        localStorage.setItem(CONFIG.storagePrefix + state.roomId, JSON.stringify(state));
+        render();
+        if(client) {
+            pushing = true;
+            await client.from('pet_rooms').upsert({ room_id: state.roomId, state: state });
+            pushing = false;
+        }
+    }
+
+    async function initSupabase() {
+        client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+        const { data } = await client.from('pet_rooms').select('state').eq('room_id', state.roomId).maybeSingle();
+        if(data) {
+            state = { ...state, ...data.state };
             render();
-          })
-          .subscribe((status) => {
-            if (status === "SUBSCRIBED") setSyncStatus("即時同步已連線");
-          });
-      } catch (e) {
-        setSyncStatus(`連線失敗：${e.message}`);
-      }
+        }
+        
+        channel = client.channel(`room-${state.roomId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'pet_rooms', filter: `room_id=eq.${state.roomId}` }, (payload) => {
+                if(pushing) return;
+                state = { ...state, ...payload.new.state };
+                render();
+            })
+            .on('broadcast', { event: 'vibe' }, ({ payload }) => {
+                const rect = document.getElementById('dogSvg').getBoundingClientRect();
+                spawnParticles(payload.emoji, rect.left + rect.width/2, rect.top + rect.height/2);
+            })
+            .subscribe();
+        
+        document.getElementById('badgeSyncStatus').textContent = "📍 雲端";
+        document.getElementById('syncStatusBox').textContent = "即時同步中";
     }
 
-    function commitState(updater) {
-      const updated = typeof updater === "function" ? updater(state) : updater;
-      state = { ...updated, updatedAt: new Date().toISOString(), updatedBy: updated.currentUser || "system" };
-      saveLocalRoom();
-      render();
-      if (config.syncEnabled) pushStateToRemote(state);
+    // --- Interactions ---
+    function interact(type, emoji) {
+        haptic();
+        const rect = document.getElementById('dogSvg').getBoundingClientRect();
+        spawnParticles(emoji, rect.left + rect.width/2, rect.top + rect.height/2);
+        
+        if(channel) channel.send({ type: 'broadcast', event: 'vibe', payload: { emoji } });
+
+        const up = { lastActionText: "" };
+        if(type === 'pet') {
+            up.petMood = clamp(state.petMood + 8, 0, 100);
+            up.petLove = state.petLove + 2;
+            up.totalPets = state.totalPets + 1;
+            up.lastActionText = "被摸摸好舒服喔～❤️";
+        } else if(type === 'feed') {
+            up.petHunger = clamp(state.petHunger - 20, 0, 100);
+            up.petMood = clamp(state.petMood + 5, 0, 100);
+            up.totalFeeds = state.totalFeeds + 1;
+            up.lastActionText = "這個超好吃的！謝謝你。🍖";
+        } else if(type === 'sleep') {
+            up.petEnergy = clamp(state.petEnergy + 30, 0, 100);
+            up.totalSleeps = state.totalSleeps + 1;
+            up.lastActionText = "我要去跟周公玩一下了，晚安。💤";
+        } else if(type === 'play') {
+            up.petEnergy = clamp(state.petEnergy - 10, 0, 100);
+            up.petMood = clamp(state.petMood + 15, 0, 100);
+            up.lastActionText = "玩遊戲最開心了！哈哈哈 🎾";
+        } else if(type === 'walk') {
+            up.petEnergy = clamp(state.petEnergy - 15, 0, 100);
+            up.petMood = clamp(state.petMood + 20, 0, 100);
+            up.streak = state.streak + 1;
+            up.lastActionText = "外面的空氣好新鮮喔！🚶‍♂️🐕";
+        }
+        commit(up);
     }
 
-    function visitAs(user) {
-      commitState(prev => ({
-        ...prev,
-        currentUser: user,
-        meVisitedToday: user === prev.meName ? true : prev.meVisitedToday,
-        partnerVisitedToday: user === prev.partnerName ? true : prev.partnerVisitedToday,
-        totalVisits: prev.totalVisits + 1,
-        petMood: clamp(prev.petMood + 4, 0, 100),
-        petEnergy: clamp(prev.petEnergy + 2, 0, 100),
-        lastActionText: getReaction("visit", user, prev.todayMood)
-      }));
+    // --- Events ---
+    function bind() {
+        document.getElementById('btnVisitMe').onclick = () => { visit(state.meName); interact('pet','❤️'); };
+        document.getElementById('btnVisitPartner').onclick = () => { visit(state.partnerName); interact('pet','💖'); };
+        document.getElementById('btnPet').onclick = () => interact('pet', '❤️');
+        document.getElementById('miniPetBtn').onclick = () => interact('pet', '❤️');
+        document.getElementById('btnFeed').onclick = () => interact('feed', '🍖');
+        document.getElementById('miniFeedBtn').onclick = () => interact('feed', '🍖');
+        document.getElementById('btnSleep').onclick = () => interact('sleep', '💤');
+        document.getElementById('miniSleepBtn').onclick = () => interact('sleep', '💤');
+        document.getElementById('btnPlay').onclick = () => interact('play', '🎾');
+        document.getElementById('btnWalk').onclick = () => interact('walk', '🌳');
+        document.getElementById('btnDress').onclick = () => commit({ accessory: ACCESSORIES[(ACCESSORIES.indexOf(state.accessory) + 1) % ACCESSORIES.length] });
+        
+        document.getElementById('dogClickArea').onclick = (e) => interact('pet', '✨');
+        document.getElementById('miniPet').onclick = () => document.getElementById('fabPanel').classList.toggle('show');
+        document.getElementById('miniExpandBtn').onclick = () => { document.getElementById('heroSection').scrollIntoView({behavior:'smooth'}); document.getElementById('fabPanel').classList.remove('show'); };
+
+        document.getElementById('btnSaveNote').onclick = () => {
+            const inp = document.getElementById('noteInput');
+            if(!inp.value.trim()) return;
+            commit({ notes: [{ text: inp.value, from: state.currentUser, time: new Date().toLocaleString() }, ...state.notes].slice(0, 15) });
+            inp.value = '';
+        };
+
+        document.getElementById('btnSaveDiary').onclick = () => {
+            const inp = document.getElementById('diaryInput');
+            if(!inp.value.trim()) return;
+            commit({ diary: [{ text: inp.value, mood: state.todayMood, by: state.currentUser, time: new Date().toLocaleString() }, ...state.diary].slice(0, 10) });
+            inp.value = '';
+        };
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.target).scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+        });
+
+        document.getElementById('btnSaveNow').onclick = () => {
+            commit({
+                meName: document.getElementById('meNameInput').value,
+                partnerName: document.getElementById('partnerNameInput').value,
+                petName: document.getElementById('petNameInput').value,
+                anniversary: document.getElementById('anniversaryInput').value
+            });
+        };
+
+        document.getElementById('btnSwitchRoom').onclick = () => {
+            const r = safeId(document.getElementById('roomInput').value);
+            if(r) window.location.search = `?room=${r}`;
+        };
+        
+        document.getElementById('btnCopyLink').onclick = () => {
+            navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${state.roomId}`);
+            haptic();
+        };
+
+        window.addEventListener('scroll', () => {
+            const rect = document.getElementById('heroSection').getBoundingClientRect();
+            document.getElementById('miniPet').classList.toggle('show', rect.bottom < 150);
+        });
     }
 
-    function interact(type) {
-      commitState(prev => {
-        const update = { ...prev };
-        if (type === "pet") {
-          update.petMood = clamp(prev.petMood + 10, 0, 100);
-          update.petLove = clamp(prev.petLove + 5, 0, 999);
-          update.totalPets = prev.totalPets + 1;
-        }
-        if (type === "feed") {
-          update.petHunger = clamp(prev.petHunger - 20, 0, 100);
-          update.petMood = clamp(prev.petMood + 6, 0, 100);
-          update.petLove = clamp(prev.petLove + 4, 0, 999);
-          update.totalFeeds = prev.totalFeeds + 1;
-        }
-        if (type === "sleep") {
-          update.petEnergy = clamp(prev.petEnergy + 22, 0, 100);
-          update.petMood = clamp(prev.petMood + 3, 0, 100);
-          update.totalSleeps = prev.totalSleeps + 1;
-        }
-        if (type === "dress") {
-          update.accessory = ACCESSORIES[(ACCESSORIES.indexOf(prev.accessory) + 1) % ACCESSORIES.length];
-        }
-        update.lastActionText = getReaction(type === "dress" ? "dress" : type, prev.currentUser, prev.todayMood);
-        return update;
-      });
-    }
-
-    function bindEvents() {
-      document.getElementById("btnVisitMe").onclick = () => visitAs(state.meName);
-      document.getElementById("btnVisitPartner").onclick = () => visitAs(state.partnerName);
-      document.getElementById("btnPet").onclick = () => interact("pet");
-      document.getElementById("btnFeed").onclick = () => interact("feed");
-      document.getElementById("btnSleep").onclick = () => interact("sleep");
-      document.getElementById("btnDress").onclick = () => interact("dress");
-
-      document.getElementById("btnSaveNote").onclick = () => {
-        const input = document.getElementById("noteInput");
-        const text = input.value.trim();
-        if (!text) return;
-        commitState(prev => ({
-          ...prev,
-          notes: [{ text, from: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.notes].slice(0, 12),
-          petMood: clamp(prev.petMood + 4, 0, 100),
-          petLove: clamp(prev.petLove + 3, 0, 999),
-          lastActionText: getReaction("note", prev.currentUser, prev.todayMood)
-        }));
-        input.value = "";
-      };
-
-      document.getElementById("btnSaveDiary").onclick = () => {
-        const input = document.getElementById("diaryInput");
-        const text = input.value.trim();
-        if (!text) return;
-        commitState(prev => ({
-          ...prev,
-          diary: [{ text, mood: prev.todayMood, by: prev.currentUser, time: new Date().toLocaleString("zh-TW") }, ...prev.diary].slice(0, 10),
-          lastActionText: `我記住今天的心情了：${prev.todayMood}`
-        }));
-        input.value = "";
-      };
-
-      document.getElementById("meNameInput").onchange = (e) => commitState(prev => ({ ...prev, meName: e.target.value || "你" }));
-      document.getElementById("partnerNameInput").onchange = (e) => commitState(prev => ({ ...prev, partnerName: e.target.value || "女友" }));
-      document.getElementById("petNameInput").onchange = (e) => commitState(prev => ({ ...prev, petName: e.target.value || "陪陪" }));
-      document.getElementById("anniversaryInput").onchange = (e) => commitState(prev => ({ ...prev, anniversary: e.target.value }));
-
-      document.getElementById("btnSaveNow").onclick = () => commitState(prev => ({ ...prev, lastActionText: getReaction(config.syncEnabled ? "sync" : "save", prev.currentUser, prev.todayMood) }));
-
-      document.getElementById("supabaseUrlInput").onchange = (e) => {
-        config.supabaseUrl = e.target.value.trim();
-        saveConfig();
-      };
-      document.getElementById("supabaseKeyInput").onchange = (e) => {
-        config.supabaseKey = e.target.value.trim();
-        saveConfig();
-      };
-
-      document.getElementById("btnSwitchRoom").onclick = async () => {
-        const nextRoom = safeRoomId(document.getElementById("roomInput").value);
-        const nextUrl = `${window.location.pathname}?room=${nextRoom}`;
-        window.history.replaceState({}, "", nextUrl);
-        loadLocalRoom(nextRoom);
-        applyDailyReset();
-        render();
-        if (config.syncEnabled) await connectSupabase();
-      };
-
-      document.getElementById("btnCopyLink").onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(getShareLink());
-          commitState(prev => ({ ...prev, lastActionText: "連結複製好了，傳給對方就能進同一個小屋。" }));
-        } catch {
-          setSyncStatus("複製失敗，請手動複製連結");
-        }
-      };
-
-      document.getElementById("btnToggleSync").onclick = async () => {
-        config.syncEnabled = !config.syncEnabled;
-        saveConfig();
-        render();
-        if (config.syncEnabled) {
-          await connectSupabase();
-        } else {
-          if (channel && client) {
-            await client.removeChannel(channel);
-            channel = null;
-          }
-          setSyncStatus("本機模式");
-        }
-      };
-
-      document.getElementById("btnResetRoom").onclick = async () => {
-        localStorage.removeItem(getStorageKey(state.roomId));
-        const roomId = state.roomId;
-        state = { ...defaultState, roomId };
-        saveLocalRoom();
-        render();
-        if (config.syncEnabled) await pushStateToRemote(state);
-      };
+    function visit(u) {
+        state.currentUser = u;
+        const msg = u === state.meName ? `今天 ${state.meName} 來陪我了！` : `喔喔！${state.partnerName} 來了！`;
+        commit({ totalVisits: state.totalVisits + 1, lastActionText: msg });
     }
 
     function init() {
-      const params = new URLSearchParams(window.location.search);
-      const room = safeRoomId(params.get("room") || "sweet-home");
-      loadConfig();
-      loadLocalRoom(room);
-      applyDailyReset();
-      bindEvents();
-      render();
-      if (config.syncEnabled && config.supabaseUrl && config.supabaseKey) {
-        connectSupabase();
-      } else {
-        setSyncStatus("本機模式");
-      }
-      window.addEventListener("storage", (e) => {
-        if (e.key === getStorageKey(state.roomId) && e.newValue) {
-          try {
-            state = { ...defaultState, ...JSON.parse(e.newValue), roomId: state.roomId };
-            render();
-          } catch {}
+        const params = new URLSearchParams(window.location.search);
+        state.roomId = safeId(params.get('room')) || CONFIG.defaultRoom;
+        
+        const local = localStorage.getItem(CONFIG.storagePrefix + state.roomId);
+        if(local) state = { ...state, ...JSON.parse(local) };
+
+        bind();
+        render();
+        initSupabase();
+
+        if('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
         }
-      });
     }
 
     init();
