@@ -411,10 +411,10 @@
     }
 
     @media (min-width: 900px) {
-      .app { max-width: 1120px; grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+      .app { max-width: 560px; align-items: start; }
       .hero-card { top: 12px; }
-      .bottom-nav { left: 50%; right: auto; width: 600px; transform: translateX(-50%); }
-      .fab-panel { left: 50%; right: auto; width: 600px; transform: translateX(-50%); }
+      .bottom-nav { left: 50%; right: auto; width: 560px; transform: translateX(-50%); }
+      .fab-panel { left: 50%; right: auto; width: 560px; transform: translateX(-50%); }
     }
     /* Entry Overlay */
     #entryOverlay {
@@ -505,13 +505,6 @@
                 <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
                   <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="rgba(0,0,0,0.16)"/>
                 </filter>
-                <filter id="furTexture" x="0%" y="0%" width="100%" height="100%">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise" />
-                  <feDiffuseLighting in="noise" lighting-color="#ffffff" surfaceScale="0.4" result="diffuse">
-                    <feDistantLight azimuth="45" elevation="60" />
-                  </feDiffuseLighting>
-                  <feComposite in="diffuse" in2="SourceGraphic" operator="arithmetic" k1="0" k2="1" k3="0.2" k4="0" />
-                </filter>
               </defs>
 
               <ellipse cx="206" cy="322" rx="94" ry="18" fill="rgba(0,0,0,0.08)" />
@@ -521,7 +514,6 @@
               </g>
 
               <g id="dogBodyGroup" filter="url(#softShadow)">
-                <g filter="url(#furTexture)">
                   <!-- Paws -->
                   <g id="pawL" style="transform-origin: 164px 280px;">
                     <ellipse cx="164" cy="286" rx="20" ry="14" fill="url(#furMain)" />
@@ -546,7 +538,6 @@
 
                   <ellipse cx="206" cy="250" rx="88" ry="64" fill="url(#furMain)" />
                   <ellipse cx="206" cy="260" rx="56" ry="38" fill="url(#furLight)" />
-                </g>
 
                 <g id="faceGroup">
                   <ellipse cx="206" cy="150" rx="24" ry="18" fill="url(#noseGrad)" />
