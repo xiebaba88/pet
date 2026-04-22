@@ -1296,14 +1296,14 @@
         document.getElementById('btnSaveNote').onclick = () => {
             const inp = document.getElementById('noteInput');
             if(!inp.value.trim()) return;
-            commit({ notes: [{ text: inp.value, from: state.currentUser, time: new Date().toLocaleString() }, ...state.notes].slice(0, 15) });
+            commit({ notes: [{ text: inp.value, from: getMyName(), time: new Date().toLocaleString() }, ...state.notes].slice(0, 15) });
             inp.value = '';
         };
 
         document.getElementById('btnSaveDiary').onclick = () => {
             const inp = document.getElementById('diaryInput');
             if(!inp.value.trim()) return;
-            commit({ diary: [{ text: inp.value, mood: state.todayMood, by: state.currentUser, time: new Date().toLocaleString() }, ...state.diary].slice(0, 10) });
+            commit({ diary: [{ text: inp.value, mood: state.todayMood, by: getMyName(), time: new Date().toLocaleString() }, ...state.diary].slice(0, 10) });
             inp.value = '';
         };
 
@@ -1438,9 +1438,11 @@
         };
     }
 
-    function startApp() {
+    async function startApp() {
         const local = localStorage.getItem(CONFIG.storagePrefix + state.roomId);
         if(local) state = { ...state, ...JSON.parse(local) };
+
+        await initSupabase();
 
         // Reasonable Visit Logic: Increment totalVisits once per session
         if(!sessionStorage.getItem('petVisited')) {
@@ -1450,7 +1452,6 @@
 
         bind();
         render();
-        initSupabase();
         startIdle(); 
         fetchWeather(); 
 
